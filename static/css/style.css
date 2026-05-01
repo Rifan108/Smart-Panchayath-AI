@@ -1,0 +1,291 @@
+/* ─── Kerala Smart Panchayat AI Planner — Custom Styles ─── */
+/* Dark theme with glassmorphism, Kerala-green accents */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+:root {
+    --primary: #00695C;
+    --primary-light: #26A69A;
+    --primary-dark: #004D40;
+    --bg-dark: #0F1419;
+    --bg-card: rgba(255, 255, 255, 0.05);
+    --border-color: rgba(255, 255, 255, 0.1);
+    --text-primary: #E7E9EA;
+    --text-secondary: #8B98A5;
+    --danger: #F44336;
+    --warning: #FF9800;
+    --success: #4CAF50;
+}
+
+* { box-sizing: border-box; }
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+/* ─── App Container ─── */
+.app-container {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* ─── Sidebar ─── */
+.sidebar {
+    width: 260px;
+    min-height: 100vh;
+    background: linear-gradient(180deg, #0a1015 0%, #111920 100%);
+    border-right: 1px solid var(--border-color);
+    padding: 20px 15px;
+    position: fixed;
+    left: 0;
+    top: 0;
+    display: flex;
+    flex-direction: column;
+    z-index: 100;
+    backdrop-filter: blur(20px);
+}
+
+.sidebar-header {
+    text-align: center;
+    padding: 15px 0;
+}
+
+.sidebar-title {
+    color: var(--primary-light);
+    font-weight: 700;
+    font-size: 1.2rem;
+    margin-bottom: 2px;
+}
+
+.sidebar-subtitle {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 300;
+}
+
+.sidebar-nav .nav-link {
+    color: var(--text-secondary);
+    border-radius: 10px;
+    padding: 12px 16px;
+    margin-bottom: 4px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.sidebar-nav .nav-link:hover {
+    color: var(--text-primary);
+    background: rgba(38, 166, 154, 0.15);
+    transform: translateX(4px);
+}
+
+.sidebar-nav .nav-link.active {
+    color: var(--primary-light) !important;
+    background: rgba(38, 166, 154, 0.2) !important;
+    border-left: 3px solid var(--primary-light);
+}
+
+.sidebar-footer {
+    margin-top: auto;
+    text-align: center;
+    padding: 15px 0;
+    border-top: 1px solid var(--border-color);
+}
+
+.sidebar-footer-text {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    margin-bottom: 2px;
+}
+
+.sidebar-footer-sub {
+    color: var(--primary-light);
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+/* ─── Main Content ─── */
+.main-content {
+    margin-left: 260px;
+    padding: 30px 35px;
+    flex: 1;
+    min-height: 100vh;
+    background: radial-gradient(ellipse at top left, rgba(0,105,92,0.08) 0%, transparent 50%),
+                radial-gradient(ellipse at bottom right, rgba(38,166,154,0.05) 0%, transparent 50%),
+                var(--bg-dark);
+}
+
+/* ─── Page Header ─── */
+.page-header {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.page-title {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin-bottom: 5px;
+    letter-spacing: -0.5px;
+}
+
+.page-subtitle {
+    font-size: 0.95rem;
+    color: var(--text-secondary);
+    font-weight: 300;
+}
+
+/* ─── Glass Cards ─── */
+.glass-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    transition: all 0.3s ease;
+}
+
+.glass-card:hover {
+    border-color: rgba(38, 166, 154, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* ─── Stat Cards ─── */
+.stat-row { margin-bottom: 25px; }
+
+.stat-card {
+    padding: 25px;
+    text-align: center;
+    min-height: 160px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.stat-icon { font-size: 1.8rem; margin-bottom: 8px; }
+
+.stat-value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 5px;
+    letter-spacing: -0.5px;
+}
+
+.stat-title {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    font-weight: 500;
+    margin-bottom: 3px;
+}
+
+.stat-subtitle {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 300;
+}
+
+/* ─── Chart Cards ─── */
+.chart-card { padding: 20px; margin-bottom: 20px; }
+.chart-row { margin-bottom: 20px; }
+
+/* ─── Table Cards ─── */
+.table-card { padding: 20px; margin-bottom: 20px; }
+
+.section-title {
+    color: var(--text-primary);
+    font-weight: 600;
+    font-size: 1.1rem;
+    margin-bottom: 15px;
+}
+
+/* ─── Priority Cards ─── */
+.priority-card {
+    padding: 25px;
+    text-align: center;
+    min-height: 140px;
+}
+
+.priority-rank {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin-bottom: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.priority-badge {
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: white;
+    padding: 3px 10px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+/* ─── Dropdowns ─── */
+.dark-dropdown .Select-control { background: rgba(255,255,255,0.05) !important; border-color: var(--border-color) !important; }
+.dark-dropdown .Select-value-label { color: var(--text-primary) !important; }
+
+.control-label {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    font-weight: 600;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* ─── Explanation Text ─── */
+.explanation-text {
+    font-size: 1rem;
+    line-height: 1.8;
+    color: var(--text-primary);
+    padding: 15px;
+    border-left: 3px solid var(--primary-light);
+    background: rgba(38, 166, 154, 0.05);
+    border-radius: 0 8px 8px 0;
+}
+
+.constraint-info {
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+    margin-bottom: 15px;
+    font-style: italic;
+}
+
+.warning-text {
+    color: var(--warning);
+    font-size: 1rem;
+    padding: 15px;
+}
+
+/* ─── Tables ─── */
+.table-dark { background: rgba(0,0,0,0.2) !important; }
+.table-dark th { color: var(--primary-light) !important; font-weight: 600; border-color: var(--border-color) !important; }
+.table-dark td { color: var(--text-primary); border-color: var(--border-color) !important; }
+.table-dark tbody tr:hover { background: rgba(38,166,154,0.1) !important; }
+
+/* ─── Plotly Chart Overrides ─── */
+.js-plotly-plot .plotly .modebar { right: 10px !important; }
+
+/* ─── Scrollbar ─── */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--bg-dark); }
+::-webkit-scrollbar-thumb { background: var(--primary-dark); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--primary); }
+
+/* ─── Responsive ─── */
+@media (max-width: 768px) {
+    .sidebar { width: 200px; }
+    .main-content { margin-left: 200px; padding: 15px; }
+    .page-title { font-size: 1.4rem; }
+    .stat-card { min-height: 120px; }
+}

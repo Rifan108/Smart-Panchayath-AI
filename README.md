@@ -256,3 +256,4 @@ For in-depth technical specifications, please consult the standalone documentati
 ## 📄 License & Statutory Compliance
 
 This software is developed for decentralized planning under the provisions of the **Constitution (73rd Amendment) Act, 1992** and adheres to the **National Data Sharing and Accessibility Policy (NDSAP)** of the Government of India.
+

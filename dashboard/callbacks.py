@@ -632,7 +632,7 @@ def register_callbacks(app, engine):
         Output("comparison-content-container", "children"),
         Input("compare-ward-a", "value"),
         Input("compare-ward-b", "value"),
-        State("global-location-store", "data"),
+        Input("global-location-store", "data"),
         Input("current-lang-store", "data"),
         prevent_initial_call=True,
     )
@@ -778,6 +778,87 @@ def register_callbacks(app, engine):
 
         filename = filename.replace(" ", "_").replace("/", "_").replace("\\", "_")
         return dcc.send_data_frame(df_export.to_csv, filename=filename, index=False)
+
+    # ─── 11c. Synchronize Ward Selectors Across Modules on Location Change ─
+    @app.callback(
+        Output("compare-ward-a", "options"),
+        Output("compare-ward-a", "value"),
+        Output("compare-ward-b", "options"),
+        Output("compare-ward-b", "value"),
+        Input("global-location-store", "data"),
+        prevent_initial_call=True,
+    )
+    def sync_comparison_dropdowns(loc_data):
+        loc_data = loc_data or {}
+        state = loc_data.get("state_name") or loc_data.get("state", "ALL")
+        district = loc_data.get("district_name") or loc_data.get("district", "ALL")
+        panchayat = loc_data.get("panchayat_name") or loc_data.get("panchayat", "ALL")
+        df = engine.get_filtered_df(state=state, district=district, panchayat=panchayat)
+        if df is None or df.empty:
+            df = engine.df_processed
+        valid_wards = sorted(df["ward_name"].dropna().unique().tolist())
+        opts_a = [{"label": f"Ward A: {w}", "value": w} for w in valid_wards]
+        opts_b = [{"label": f"Ward B: {w}", "value": w} for w in valid_wards]
+        val_a = valid_wards[0] if valid_wards else None
+        val_b = valid_wards[1] if len(valid_wards) > 1 else val_a
+        return opts_a, val_a, opts_b, val_b
+
+    @app.callback(
+        Output("vulnerability-ward-selector", "options"),
+        Output("vulnerability-ward-selector", "value"),
+        Input("global-location-store", "data"),
+        prevent_initial_call=True,
+    )
+    def sync_vulnerability_dropdown(loc_data):
+        loc_data = loc_data or {}
+        state = loc_data.get("state_name") or loc_data.get("state", "ALL")
+        district = loc_data.get("district_name") or loc_data.get("district", "ALL")
+        panchayat = loc_data.get("panchayat_name") or loc_data.get("panchayat", "ALL")
+        df = engine.get_filtered_df(state=state, district=district, panchayat=panchayat)
+        if df is None or df.empty:
+            df = engine.df_processed
+        valid_wards = sorted(df["ward_name"].dropna().unique().tolist())
+        opts = [{"label": w, "value": w} for w in valid_wards]
+        val = valid_wards[0] if valid_wards else None
+        return opts, val
+
+    @app.callback(
+        Output("budget-ward-selector", "options"),
+        Output("budget-ward-selector", "value"),
+        Input("global-location-store", "data"),
+        prevent_initial_call=True,
+    )
+    def sync_budget_dropdown(loc_data):
+        loc_data = loc_data or {}
+        state = loc_data.get("state_name") or loc_data.get("state", "ALL")
+        district = loc_data.get("district_name") or loc_data.get("district", "ALL")
+        panchayat = loc_data.get("panchayat_name") or loc_data.get("panchayat", "ALL")
+        df = engine.get_filtered_df(state=state, district=district, panchayat=panchayat)
+        if df is None or df.empty:
+            df = engine.df_processed
+        valid_wards = sorted(df["ward_name"].dropna().unique().tolist())
+        opts = [{"label": w, "value": w} for w in valid_wards]
+        val = valid_wards[0] if valid_wards else None
+        return opts, val
+
+    @app.callback(
+        Output("explain-ward-selector", "options"),
+        Output("explain-ward-selector", "value"),
+        Input("global-location-store", "data"),
+        prevent_initial_call=True,
+    )
+    def sync_explain_dropdown(loc_data):
+        loc_data = loc_data or {}
+        state = loc_data.get("state_name") or loc_data.get("state", "ALL")
+        district = loc_data.get("district_name") or loc_data.get("district", "ALL")
+        panchayat = loc_data.get("panchayat_name") or loc_data.get("panchayat", "ALL")
+        df = engine.get_filtered_df(state=state, district=district, panchayat=panchayat)
+        if df is None or df.empty:
+            df = engine.df_processed
+        valid_wards = sorted(df["ward_name"].dropna().unique().tolist())
+        opts = [{"label": w, "value": w} for w in valid_wards]
+        val = valid_wards[0] if valid_wards else None
+        return opts, val
 
     # ─── 12. Active Navigation Pill Link Highlight (Clientside 0ms Toggle) 
     app.clientside_callback(

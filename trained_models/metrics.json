@@ -3,14 +3,19 @@
     "architecture": "HistGradientBoosting",
     "target": "priority_sector",
     "metrics": {
-      "accuracy": 0.8602,
-      "precision_macro": 0.5,
-      "recall_macro": 0.6667,
-      "f1_macro": 0.5556
+      "accuracy": 0.8447,
+      "precision_macro": 0.7862,
+      "recall_macro": 0.727,
+      "f1_macro": 0.7094
     },
     "classes": [
       "Agriculture & Food Security",
+      "Digital & E-Governance",
+      "Economic Development",
+      "Education",
       "Environment & Disaster Mgmt",
+      "Health & Sanitation",
+      "Infrastructure",
       "Social Welfare"
     ]
   },
@@ -19,13 +24,13 @@
     "target": "vulnerability_index",
     "metrics": {
       "r2_score": 1.0,
-      "mae": 0.0001,
-      "rmse": 0.0002
+      "mae": 0.0006,
+      "rmse": 0.0008
     }
   },
   "anomaly_detector": {
     "architecture": "Isolation Forest",
     "contamination": 0.03,
-    "flagged_audit_records": 84
+    "flagged_audit_records": 88
   }
 }

@@ -384,6 +384,17 @@ def get_dashboard_data():
         panchayat_id=loc["panchayat_id"],
     )
 
+    demographics = engine.get_demographic_profile(
+        state=loc["state_name"],
+        district=loc["district_name"],
+        panchayat=loc["panchayat_name"],
+    )
+    historical_trajectory = engine.get_historical_records(
+        state=loc["state_name"],
+        district=loc["district_name"],
+        panchayat=loc["panchayat_name"],
+    )
+
     result = {
         "location": loc,
         "total_wards": len(df),
@@ -393,6 +404,8 @@ def get_dashboard_data():
             "high_vulnerability_ward_count": high_vuln_wards,
             "vulnerability_category": "High" if avg_vuln > 0.65 else ("Medium" if avg_vuln > 0.35 else "Low"),
         },
+        "demographics": _sanitize_for_json(demographics),
+        "historical_trajectory": _sanitize_for_json(historical_trajectory),
         "governance": gov,
         "sector_vulnerability_scores": sector_scores,
         "indicators": _sanitize_for_json(indicators),

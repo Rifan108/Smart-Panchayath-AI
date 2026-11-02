@@ -497,15 +497,14 @@ def create_comparison_content(engine, ward_a, ward_b, lang="en", state=None, dis
         barmode="group",
         yaxis_title="Vulnerability Index (0 = Resilient, 1 = High Deficit)",
         yaxis=dict(range=[0, 1.15], gridcolor="#E2E8F0"),
-        xaxis=dict(gridcolor="rgba(0,0,0,0)"),
+        xaxis=dict(gridcolor="rgba(0,0,0,0)", automargin=True, tickangle=-25),
         template="plotly_white",
         paper_bgcolor="#FFFFFF",
         plot_bgcolor="#FFFFFF",
-        height=450,
+        height=480,
         font=dict(family="Inter", color="#172B42", size=11),
-        legend=dict(orientation="h", yanchor="top", y=1.10, xanchor="center", x=0.5),
-        margin=dict(l=50, r=30, t=80, b=95),
-        xaxis_tickangle=-28,
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
+        margin=dict(l=55, r=35, t=75, b=110),
     )
 
     # Comparison table rows

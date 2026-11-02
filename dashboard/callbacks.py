@@ -381,6 +381,10 @@ def register_callbacks(app, engine):
             return get_cached_layout(
                 "comparison", create_comparison_layout, engine, **common_kwargs
             )
+        elif clean_path in ["/dashboard/training", "/dashboard/models", "/dashboard/ml"]:
+            return get_cached_layout(
+                "training", create_training_layout, engine, **common_kwargs
+            )
         elif clean_path in ["/dashboard/auth", "/dashboard/login", "/dashboard/register", "/dashboard/contact"]:
             return get_cached_layout(
                 "auth", create_auth_layout,

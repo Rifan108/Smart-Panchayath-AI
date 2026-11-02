@@ -1,212 +1,117 @@
 """
-Sector Prioritizer — ML-based sector ranking using XGBoost + Random Forest ensemble.
-Identifies the Top 3 priority development sectors for each ward.
+Sector Prioritizer — Pure math-based sector ranking.
+Identifies Top 3 priority development sectors for each ward
+based on computed vulnerability scores (no ML required).
 """
 
 import os
 import sys
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import StratifiedKFold, cross_val_score
-from sklearn.metrics import classification_report, accuracy_score
-import xgboost as xgb
-import joblib
-import warnings
-
-warnings.filterwarnings("ignore")
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config import (
-    SECTOR_INDICATORS, XGBOOST_PARAMS, RANDOM_FOREST_PARAMS,
-    CROSS_VALIDATION_FOLDS, MODEL_DIR,
-    XGBOOST_MODEL_PATH, RF_MODEL_PATH,
-)
+from config import SECTOR_INDICATORS
 
 
-def prepare_training_data(df):
+def get_sector_scores_for_ward(df, ward_name):
     """
-    Prepare feature matrix and target labels for sector prioritization.
-    
-    The target is the most vulnerable sector (highest sector score) for each ward.
-    Features are the raw indicator values.
+    Get a dict of {sector_name: vulnerability_score} for a ward.
+    Sorted descending by score (most vulnerable first).
     """
-    # Feature columns: all indicator values
-    feature_cols = []
+    ward_row = df[df["ward_name"] == ward_name]
+    if ward_row.empty:
+        return {}
+
+    scores = {}
+    score_cols = [c for c in df.columns if c.startswith("score_")]
+    for col in score_cols:
+        # Convert column name back to readable sector name
+        sector_name = (
+            col.replace("score_", "")
+               .replace("_and_", " & ")
+               .replace("_", " ")
+               .title()
+        )
+        scores[sector_name] = float(ward_row[col].values[0])
+
+    return dict(sorted(scores.items(), key=lambda x: x[1], reverse=True))
+
+
+def get_top_n_sectors_for_ward(df, ward_name, n=3):
+    """
+    Return a list of top N priority sectors with confidence scores.
+    Each item: {"sector": name, "confidence": float, "rank": int}
+    """
+    scores = get_sector_scores_for_ward(df, ward_name)
+    if not scores:
+        return []
+
+    # Normalize scores to 0-1 confidence (relative to max)
+    max_score = max(scores.values()) if scores else 1.0
+    result = []
+    for rank, (sector, score) in enumerate(list(scores.items())[:n], start=1):
+        confidence = score / max_score if max_score > 0 else 0.0
+        result.append({
+            "sector": sector,
+            "score": score,
+            "confidence": min(confidence, 1.0),
+            "rank": rank,
+        })
+    return result
+
+
+def get_all_wards_top_sectors(df, n=3):
+    """
+    Return a dict of {ward_name: [top sector dicts]} for all wards.
+    """
+    result = {}
+    for ward_name in df["ward_name"].tolist():
+        result[ward_name] = get_top_n_sectors_for_ward(df, ward_name, n)
+    return result
+
+
+def assign_priority_columns(df):
+    """
+    Add priority_sector_1/2/3 and priority_confidence_1 columns to df.
+    Pure math — no ML needed.
+    """
+    priority_1, priority_2, priority_3 = [], [], []
+    conf_1, conf_2, conf_3 = [], [], []
+
+    for _, row in df.iterrows():
+        ward_name = row["ward_name"]
+        top = get_top_n_sectors_for_ward(df[df["ward_name"] == ward_name], ward_name, n=3)
+
+        priority_1.append(top[0]["sector"] if len(top) > 0 else "")
+        priority_2.append(top[1]["sector"] if len(top) > 1 else "")
+        priority_3.append(top[2]["sector"] if len(top) > 2 else "")
+        conf_1.append(top[0]["confidence"] if len(top) > 0 else 0.0)
+        conf_2.append(top[1]["confidence"] if len(top) > 1 else 0.0)
+        conf_3.append(top[2]["confidence"] if len(top) > 2 else 0.0)
+
+    df["priority_sector_1"] = priority_1
+    df["priority_sector_2"] = priority_2
+    df["priority_sector_3"] = priority_3
+    df["priority_confidence_1"] = conf_1
+    df["priority_confidence_2"] = conf_2
+    df["priority_confidence_3"] = conf_3
+
+    return df
+
+
+def get_feature_importance_from_scores(df):
+    """
+    Compute which sector indicators contribute most to overall vulnerability
+    across all wards (simple mean absolute contribution).
+    Returns a sorted dict of {indicator: importance}.
+    """
+    all_indicators = []
     for indicators in SECTOR_INDICATORS.values():
-        feature_cols.extend([col for col in indicators if col in df.columns])
+        all_indicators.extend(indicators)
 
-    X = df[feature_cols].values
+    available = [col for col in all_indicators if col in df.columns]
+    importance = {}
+    for col in available:
+        importance[col] = float(df[col].std())  # variance across wards = importance
 
-    # Target: the sector with the highest vulnerability score
-    score_cols = [col for col in df.columns if col.startswith("score_")]
-    y_sector_names = df[score_cols].idxmax(axis=1)
-
-    # Encode sector names to integers
-    unique_sectors = sorted(y_sector_names.unique())
-    sector_to_id = {s: i for i, s in enumerate(unique_sectors)}
-    id_to_sector = {i: s for s, i in sector_to_id.items()}
-
-    y = y_sector_names.map(sector_to_id).values
-
-    return X, y, feature_cols, sector_to_id, id_to_sector
-
-
-def train_xgboost(X, y, num_classes):
-    """Train XGBoost classifier."""
-    params = XGBOOST_PARAMS.copy()
-    params["objective"] = "multi:softprob"
-    params["num_class"] = num_classes
-
-    model = xgb.XGBClassifier(**params)
-    model.fit(X, y)
-
-    return model
-
-
-def train_random_forest(X, y):
-    """Train Random Forest classifier."""
-    model = RandomForestClassifier(**RANDOM_FOREST_PARAMS)
-    model.fit(X, y)
-
-    return model
-
-
-def evaluate_model(model, X, y, model_name="Model"):
-    """Evaluate model with cross-validation."""
-    cv = StratifiedKFold(n_splits=CROSS_VALIDATION_FOLDS, shuffle=True, random_state=42)
-
-    scores = cross_val_score(model, X, y, cv=cv, scoring="accuracy")
-    print(f"\n📊 {model_name} Cross-Validation Results:")
-    print(f"   Accuracy: {scores.mean():.4f} (+/- {scores.std():.4f})")
-    print(f"   Per-fold: {[f'{s:.3f}' for s in scores]}")
-
-    # Full training accuracy
-    y_pred = model.predict(X)
-    print(f"   Training Accuracy: {accuracy_score(y, y_pred):.4f}")
-
-    return scores
-
-
-def ensemble_predict(xgb_model, rf_model, X):
-    """
-    Soft voting ensemble: average probability outputs from both models.
-    Returns predicted class and probability distributions.
-    """
-    xgb_probs = xgb_model.predict_proba(X)
-    rf_probs = rf_model.predict_proba(X)
-
-    # Average probabilities (soft voting)
-    ensemble_probs = (xgb_probs + rf_probs) / 2
-
-    # Predicted class = highest average probability
-    predictions = np.argmax(ensemble_probs, axis=1)
-
-    return predictions, ensemble_probs
-
-
-def get_top_n_sectors(ensemble_probs, id_to_sector, n=3):
-    """
-    Get top N priority sectors with confidence scores for each ward.
-    
-    Returns a list of dicts: [{"sector": name, "confidence": score}, ...]
-    """
-    results = []
-
-    for i in range(ensemble_probs.shape[0]):
-        ward_probs = ensemble_probs[i]
-        top_indices = np.argsort(ward_probs)[::-1][:n]
-
-        ward_result = []
-        for idx in top_indices:
-            sector_col = id_to_sector[idx]
-            sector_name = sector_col.replace("score_", "").replace("_", " ").title()
-            ward_result.append({
-                "sector": sector_name,
-                "sector_col": sector_col,
-                "confidence": float(ward_probs[idx]),
-                "rank": len(ward_result) + 1,
-            })
-        results.append(ward_result)
-
-    return results
-
-
-def get_feature_importance(xgb_model, rf_model, feature_names):
-    """
-    Get combined feature importance from both models.
-    Returns sorted dict of feature → importance score.
-    """
-    xgb_importance = xgb_model.feature_importances_
-    rf_importance = rf_model.feature_importances_
-
-    # Average importance
-    combined = (xgb_importance + rf_importance) / 2
-
-    importance_dict = dict(zip(feature_names, combined))
-    return dict(sorted(importance_dict.items(), key=lambda x: x[1], reverse=True))
-
-
-def train_and_save_models(df):
-    """
-    Full training pipeline: prepare data, train both models, evaluate, save.
-    """
-    print("\n" + "=" * 60)
-    print("  Sector Prioritization — Model Training")
-    print("=" * 60)
-
-    # Prepare data
-    X, y, feature_cols, sector_to_id, id_to_sector = prepare_training_data(df)
-    num_classes = len(sector_to_id)
-
-    print(f"\n📋 Training Data:")
-    print(f"   Features: {X.shape[1]}")
-    print(f"   Samples: {X.shape[0]}")
-    print(f"   Classes: {num_classes}")
-    print(f"   Sectors: {list(sector_to_id.keys())}")
-
-    # Train XGBoost
-    print("\n🔧 Training XGBoost...")
-    xgb_model = train_xgboost(X, y, num_classes)
-    evaluate_model(xgb_model, X, y, "XGBoost")
-
-    # Train Random Forest
-    print("\n🔧 Training Random Forest...")
-    rf_model = train_random_forest(X, y)
-    evaluate_model(rf_model, X, y, "Random Forest")
-
-    # Ensemble evaluation
-    print("\n🔧 Ensemble Evaluation...")
-    predictions, ensemble_probs = ensemble_predict(xgb_model, rf_model, X)
-    ensemble_acc = accuracy_score(y, predictions)
-    print(f"   Ensemble Training Accuracy: {ensemble_acc:.4f}")
-
-    # Feature importance
-    importance = get_feature_importance(xgb_model, rf_model, feature_cols)
-    print(f"\n📊 Top 10 Most Important Features:")
-    for i, (feat, imp) in enumerate(list(importance.items())[:10]):
-        bar = "█" * int(imp * 200)
-        print(f"   {i+1}. {feat}: {imp:.4f} {bar}")
-
-    # Save models
-    os.makedirs(MODEL_DIR, exist_ok=True)
-    joblib.dump(xgb_model, XGBOOST_MODEL_PATH)
-    joblib.dump(rf_model, RF_MODEL_PATH)
-    joblib.dump(sector_to_id, os.path.join(MODEL_DIR, "sector_to_id.joblib"))
-    joblib.dump(id_to_sector, os.path.join(MODEL_DIR, "id_to_sector.joblib"))
-    joblib.dump(feature_cols, os.path.join(MODEL_DIR, "feature_cols.joblib"))
-
-    print(f"\n💾 Models saved to {MODEL_DIR}")
-
-    return xgb_model, rf_model, feature_cols, sector_to_id, id_to_sector
-
-
-def load_models():
-    """Load pre-trained models from disk."""
-    xgb_model = joblib.load(XGBOOST_MODEL_PATH)
-    rf_model = joblib.load(RF_MODEL_PATH)
-    sector_to_id = joblib.load(os.path.join(MODEL_DIR, "sector_to_id.joblib"))
-    id_to_sector = joblib.load(os.path.join(MODEL_DIR, "id_to_sector.joblib"))
-    feature_cols = joblib.load(os.path.join(MODEL_DIR, "feature_cols.joblib"))
-
-    return xgb_model, rf_model, feature_cols, sector_to_id, id_to_sector
+    return dict(sorted(importance.items(), key=lambda x: x[1], reverse=True))

@@ -1,0 +1,54 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyd
+
+# Virtual Environments
+venv/
+env/
+ENV/
+.venv/
+
+# Environment Variables & Secrets
+.env
+.env.*
+
+# IDEs and Editors
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# Media / Large Archives
+*.mp4
+*.avi
+*.mov
+*.zip
+*.tar.gz
+*.rar
+WhatsApp Video*
+
+# Scratch & Temporary Logs
+*.log
+catboost_info/
+scratch/
+scratch_*.txt
+*.tmp
+
+# User authentication DB (prevent committing local user passwords to public GitHub)
+data/users.db
+
+# Ignore large synthetic experimental datasets (preserve authentic government datasets only)
+ml/datasets/synthetic/
+ml/models/classification/champion_development_gap_model.joblib

@@ -1,0 +1,31 @@
+{
+  "priority_sector_classifier": {
+    "architecture": "HistGradientBoosting",
+    "target": "priority_sector",
+    "metrics": {
+      "accuracy": 0.8602,
+      "precision_macro": 0.5,
+      "recall_macro": 0.6667,
+      "f1_macro": 0.5556
+    },
+    "classes": [
+      "Agriculture & Food Security",
+      "Environment & Disaster Mgmt",
+      "Social Welfare"
+    ]
+  },
+  "vulnerability_regressor": {
+    "architecture": "RidgeRegression",
+    "target": "vulnerability_index",
+    "metrics": {
+      "r2_score": 1.0,
+      "mae": 0.0001,
+      "rmse": 0.0002
+    }
+  },
+  "anomaly_detector": {
+    "architecture": "Isolation Forest",
+    "contamination": 0.03,
+    "flagged_audit_records": 84
+  }
+}

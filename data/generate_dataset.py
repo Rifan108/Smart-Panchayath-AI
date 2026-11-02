@@ -8,6 +8,12 @@ reflecting geographic patterns (coastal vs interior, town-center vs rural).
 
 import os
 import sys
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+
 import numpy as np
 import pandas as pd
 
@@ -219,9 +225,8 @@ def generate_dataset():
     # Apply correlations
     df = add_correlations(df)
 
-    # Normalize population to sum to ~41,515
-    pop_sum = df["population"].sum()
-    df["population"] = (df["population"] * 41515 / pop_sum).astype(int)
+    from data.panchayat_geography import normalize_ward_populations
+    df["population"] = normalize_ward_populations(df["population"].values, 41515)
 
     return df
 

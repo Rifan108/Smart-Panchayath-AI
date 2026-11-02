@@ -5,6 +5,19 @@ Focused on Manjeshwar Grama Panchayat, Kasaragod District, Kerala
 
 import os
 
+# Load .env file if present (for local development)
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
+
+# ─── OpenAI Configuration ─────────────────────────────────────────────────────
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+OPENAI_MODEL = "gpt-3.5-turbo"  # Cheapest OpenAI model
+# Set to True only if you want remote GPT queries; False enables instant (<1ms) local ML diagnostics
+ENABLE_OPENAI_EXPLANATIONS = os.getenv("ENABLE_OPENAI_EXPLANATIONS", "false").lower() in ("true", "1", "yes")
+
 # Base directory
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -172,10 +185,10 @@ RANDOM_FOREST_PARAMS = {
 
 CROSS_VALIDATION_FOLDS = 5
 
-# ─── Dashboard Configuration ──────────────────────────────────────────
-DASH_DEBUG = False
-DASH_HOST = "127.0.0.1"
-DASH_PORT = 8050
+# ─── Dashboard Configuration ──────────────────────────────────────────────
+DASH_DEBUG = os.getenv("DASH_DEBUG", "False").lower() == "true"
+DASH_HOST = "0.0.0.0"  # Required for cloud deployment
+DASH_PORT = int(os.getenv("PORT", "8050"))
 
 # Color Palette
 COLORS = {

@@ -1,0 +1,91 @@
+{
+  "model_system_version": "3.0.0-authentic-gov-data",
+  "metadata_generated_at": "2026-11-02T09:02:25.656491+00:00",
+  "data_provenance": "100% Authentic Government Statistics (NITI Aayog MPI 2023, NFHS-5, Census 2011, JJM)",
+  "synthetic_data_used": false,
+  "spatial_validation_protocol": "Spatial GroupShuffleSplit across 25 Train and 7 Holdout Districts",
+  "holdout_districts": [
+    "Kannur",
+    "Kanyakumari",
+    "Kozhikode",
+    "Malappuram",
+    "Thanjavur",
+    "Udupi",
+    "Visakhapatnam"
+  ],
+  "champion_models": {
+    "priority_sector_classifier": {
+      "architecture": "HistGradientBoosting",
+      "target": "priority_sector",
+      "metrics": {
+        "accuracy": 0.8602,
+        "precision_macro": 0.5,
+        "recall_macro": 0.6667,
+        "f1_macro": 0.5556
+      },
+      "classes": [
+        "Agriculture & Food Security",
+        "Environment & Disaster Mgmt",
+        "Social Welfare"
+      ]
+    },
+    "vulnerability_regressor": {
+      "architecture": "RidgeRegression",
+      "target": "vulnerability_index",
+      "metrics": {
+        "r2_score": 1.0,
+        "mae": 0.0001,
+        "rmse": 0.0002
+      }
+    },
+    "anomaly_detector": {
+      "architecture": "Isolation Forest",
+      "contamination": 0.03,
+      "flagged_audit_records": 84
+    }
+  },
+  "benchmark_comparison": {
+    "classification": {
+      "HistGradientBoosting": {
+        "accuracy": 0.8602,
+        "precision_macro": 0.5,
+        "recall_macro": 0.6667,
+        "f1_macro": 0.5556
+      },
+      "RandomForest": {
+        "accuracy": 0.8602,
+        "precision_macro": 0.5,
+        "recall_macro": 0.6667,
+        "f1_macro": 0.5556
+      },
+      "ExtraTrees": {
+        "accuracy": 0.8602,
+        "precision_macro": 0.5,
+        "recall_macro": 0.6667,
+        "f1_macro": 0.5556
+      }
+    },
+    "regression": {
+      "HistGradientBoostingRegressor": {
+        "r2_score": 0.7874,
+        "mae": 0.0234,
+        "rmse": 0.0302
+      },
+      "RandomForestRegressor": {
+        "r2_score": 0.9773,
+        "mae": 0.0083,
+        "rmse": 0.0099
+      },
+      "ExtraTreesRegressor": {
+        "r2_score": 0.9792,
+        "mae": 0.0065,
+        "rmse": 0.0094
+      },
+      "RidgeRegression": {
+        "r2_score": 1.0,
+        "mae": 0.0001,
+        "rmse": 0.0002
+      }
+    }
+  }
+}

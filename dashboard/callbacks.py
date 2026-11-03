@@ -941,16 +941,19 @@ def register_callbacks(app, engine):
         Output("voice-assistant-panel", "className"),
         Input("btn-open-assistant", "n_clicks"),
         Input("btn-close-assistant", "n_clicks"),
+        Input("explain-this-trigger-store", "data"),
         State("assistant-open-store", "data"),
         prevent_initial_call=True,
     )
-    def toggle_voice_assistant(n_open, n_close, is_open):
+    def toggle_voice_assistant(n_open, n_close, explain_trigger, is_open):
         ctx = dash.callback_context
         if not ctx.triggered:
             return is_open, "voice-assistant-panel shadow-lg" if is_open else "voice-assistant-panel shadow-lg d-none"
         trig_id = ctx.triggered[0]["prop_id"].split(".")[0]
         if trig_id == "btn-close-assistant":
             return False, "voice-assistant-panel shadow-lg d-none"
+        if trig_id == "explain-this-trigger-store" and explain_trigger:
+            return True, "voice-assistant-panel shadow-lg"
         new_state = not is_open
         return new_state, "voice-assistant-panel shadow-lg" if new_state else "voice-assistant-panel shadow-lg d-none"
 
@@ -977,9 +980,8 @@ def register_callbacks(app, engine):
         Output("assistant-text-input", "value"),
         Output("assistant-audio-player", "src"),
         Output("assistant-audio-store", "data"),
-        Output("voice-assistant-panel", "className", allow_duplicate=True),
-        Output("assistant-open-store", "data", allow_duplicate=True),
         Input("assistant-send-btn", "n_clicks"),
+        Input("assistant-text-input", "n_submit"),
         Input("chip-explain-budget", "n_clicks"),
         Input("chip-explain-deficit", "n_clicks"),
         Input("chip-explain-demo", "n_clicks"),
@@ -990,16 +992,15 @@ def register_callbacks(app, engine):
         State("global-location-store", "data"),
         State("assistant-history-store", "data"),
         State("assistant-autoplay-store", "data"),
-        State("assistant-open-store", "data"),
         prevent_initial_call=True,
     )
     def handle_assistant_interaction(
-        n_send, n_bgt, n_dfc, n_dem, n_gov, explain_trigger,
-        text_val, lang_sel, loc_data, history, autoplay, is_open
+        n_send, n_submit, n_bgt, n_dfc, n_dem, n_gov, explain_trigger,
+        text_val, lang_sel, loc_data, history, autoplay
     ):
         ctx = dash.callback_context
         if not ctx.triggered:
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         trig_id = ctx.triggered[0]["prop_id"].split(".")[0]
         user_query = ""
@@ -1016,11 +1017,11 @@ def register_callbacks(app, engine):
         elif trig_id == "explain-this-trigger-store" and explain_trigger:
             component_id = explain_trigger.get("component_id")
             user_query = f"Explain dashboard module {component_id}"
-        elif trig_id == "assistant-send-btn" and text_val:
+        elif trig_id in ["assistant-send-btn", "assistant-text-input"] and text_val:
             user_query = text_val.strip()
 
         if not user_query and not component_id:
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
         loc = loc_data or {}
         st = loc.get("state_name") or loc.get("state", "ALL")
@@ -1083,9 +1084,7 @@ def register_callbacks(app, engine):
                 )
 
         audio_src = f"data:audio/mp3;base64,{audio_b64}" if (audio_b64 and autoplay) else ""
-        panel_class = "voice-assistant-panel shadow-lg"
-
-        return bubbles, current_history, "", audio_src, audio_b64, panel_class, True
+        return bubbles, current_history, "", audio_src, audio_b64
 
 
     # ─── 16. Explain Chart Buttons to Assistant Trigger ─────────────────────

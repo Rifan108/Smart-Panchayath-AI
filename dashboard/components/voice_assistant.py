@@ -10,10 +10,12 @@ from services.i18n import t
 
 SUPPORTED_LANGUAGES = [
     {"label": "English (EN)", "value": "en"},
-    {"label": "ಕನ್ನಡ (Kannada)", "value": "kn"},
-    {"label": "हिंदी (Hindi)", "value": "hi"},
-    {"label": "मराठी (Marathi)", "value": "mr"},
-    {"label": "മലയാളം (Malayalam)", "value": "ml"},
+    {"label": "ಕನ್ನಡ (KN)", "value": "kn"},
+    {"label": "हिन्दी (HI)", "value": "hi"},
+    {"label": "मराठी (MR)", "value": "mr"},
+    {"label": "മലയാളം (ML)", "value": "ml"},
+    {"label": "தமிழ் (TA)", "value": "ta"},
+    {"label": "తెలుగు (TE)", "value": "te"},
 ]
 
 
@@ -92,7 +94,7 @@ def create_voice_assistant_widget():
                                                 options=SUPPORTED_LANGUAGES,
                                                 value="en",
                                                 clearable=False,
-                                                style={"width": "165px", "fontSize": "0.78rem"},
+                                                style={"width": "140px", "fontSize": "0.78rem"},
                                                 className="light-dropdown",
                                             ),
                                         ],
@@ -100,7 +102,7 @@ def create_voice_assistant_widget():
                                     ),
                                     html.Div(
                                         [
-                                            html.Button("🔊 Auto-Play", id="btn-toggle-autoplay", className="btn btn-xs btn-outline-secondary py-0 px-2", style={"fontSize": "0.7rem"}, n_clicks=0),
+                                            html.Button("🔊 Auto-Play", id="btn-toggle-autoplay", className="btn btn-xs btn-outline-secondary py-1 px-2", style={"fontSize": "0.72rem", "borderRadius": "12px", "whiteSpace": "nowrap"}, n_clicks=0),
                                         ],
                                         className="d-flex align-items-center ms-auto",
                                     ),
@@ -114,7 +116,7 @@ def create_voice_assistant_widget():
                     # Quick Suggestion Action Pills
                     html.Div(
                         [
-                            html.Button("💡 Explain Budget Priority", id="chip-explain-budget", className="assistant-chip-pill", n_clicks=0),
+                            html.Button("💡 Explain Budget", id="chip-explain-budget", className="assistant-chip-pill", n_clicks=0),
                             html.Button("📊 Ward Deficit Profile", id="chip-explain-deficit", className="assistant-chip-pill", n_clicks=0),
                             html.Button("👥 Census Demographics", id="chip-explain-demo", className="assistant-chip-pill", n_clicks=0),
                             html.Button("🏛️ Governance & MLA", id="chip-explain-gov", className="assistant-chip-pill", n_clicks=0),
@@ -171,7 +173,7 @@ def create_voice_assistant_widget():
                                     dcc.Input(
                                         id="assistant-text-input",
                                         type="text",
-                                        placeholder="Ask in English, ಕನ್ನಡ, हिंदी, मराठी, മലയാളം...",
+                                        placeholder="Ask in English, ಕನ್ನಡ, हिन्दी, मराठी, മലയാളം, தமிழ், తెలుగు...",
                                         className="form-control form-control-sm flex-grow-1",
                                         style={"fontSize": "0.85rem", "borderRadius": "20px"},
                                         debounce=False,
@@ -222,3 +224,4 @@ def create_voice_assistant_widget():
         ],
         id="voice-assistant-container",
     )
+

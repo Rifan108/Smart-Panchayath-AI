@@ -609,23 +609,60 @@ class AnalysisEngine:
         return df[available] if available else pd.DataFrame(columns=cols)
 
     def get_panchayat_governance(self, state=None, district=None, panchayat=None, state_id=None, district_id=None, panchayat_id=None):
-        """Get governance details (Taluk, Constituency, MLA, Party) for current filter."""
+        """Get verified governance details (Taluk, Constituency, MLA, Party) for current filter."""
+        # Multi-panchayat aggregated scope (National / Statewide / District-wide)
+        if not panchayat or str(panchayat).strip().upper() in ["ALL", "NONE", ""]:
+            scope_desc = district if (district and str(district).strip().upper() not in ["ALL", "NONE", ""]) else (state if (state and str(state).strip().upper() not in ["ALL", "NONE", ""]) else "Jurisdiction")
+            return {
+                "is_specific_panchayat": False,
+                "taluk": f"Multiple Taluks in {scope_desc}",
+                "assembly_constituency": f"Multiple Constituencies in {scope_desc}",
+                "constituency": f"Multiple Constituencies in {scope_desc}",
+                "mla_name": "Select a specific Grama Panchayat",
+                "mla": "Select a specific Grama Panchayat",
+                "mla_party": "",
+                "party": "",
+                "state": state or "All States",
+                "district": district or "All Districts",
+                "panchayat_name": "All Grama Panchayats",
+                "panchayat": "All Grama Panchayats",
+                "state_id": str(state_id or "ALL"),
+                "district_id": str(district_id or "ALL"),
+                "panchayat_id": "N/A (Multi-Panchayat Scope)",
+                "lgd_code": "N/A (Multi-Panchayat Scope)",
+            }
+
+        # Specific Grama Panchayat selected: query verified official catalog
+        from data.panchayat_geography import get_panchayat_governance as get_geo_gov
+        geo_gov = get_geo_gov(panchayat)
+
         df = self.get_filtered_df(state=state, district=district, panchayat=panchayat,
                                   state_id=state_id, district_id=district_id, panchayat_id=panchayat_id)
-        if df.empty:
-            return None
-        first = df.iloc[0]
+        first = df.iloc[0] if (df is not None and not df.empty) else {}
+
+        taluk = geo_gov.get("taluk") if (geo_gov and geo_gov.get("taluk") != "N/A") else first.get("taluk", "N/A")
+        constituency = geo_gov.get("constituency") if (geo_gov and geo_gov.get("constituency") != "N/A") else first.get("assembly_constituency", "N/A")
+        mla = geo_gov.get("mla") if (geo_gov and geo_gov.get("mla") != "N/A") else first.get("mla_name", "N/A")
+        party = geo_gov.get("party") if (geo_gov and geo_gov.get("party") != "N/A") else first.get("mla_party", "")
+        lgd = str(geo_gov.get("lgd_code") if (geo_gov and geo_gov.get("lgd_code") != "N/A") else first.get("panchayat_lgd", panchayat_id or "N/A"))
+
         return {
-            "taluk": first.get("taluk", "N/A"),
-            "assembly_constituency": first.get("assembly_constituency", "N/A"),
-            "mla_name": first.get("mla_name", "N/A"),
-            "mla_party": first.get("mla_party", "N/A"),
-            "state": first.get("state", state or "N/A"),
-            "district": first.get("district", district or "N/A"),
-            "panchayat_name": first.get("panchayat_name", panchayat or "N/A"),
+            "is_specific_panchayat": True,
+            "taluk": taluk,
+            "assembly_constituency": constituency,
+            "constituency": constituency,
+            "mla_name": mla,
+            "mla": mla,
+            "mla_party": party,
+            "party": party,
+            "state": first.get("state", geo_gov.get("state", state or "N/A")),
+            "district": first.get("district", geo_gov.get("district", district or "N/A")),
+            "panchayat_name": first.get("panchayat_name", panchayat),
+            "panchayat": first.get("panchayat_name", panchayat),
             "state_id": str(first.get("state_lgd", state_id or "ALL")),
             "district_id": str(first.get("district_lgd", district_id or "ALL")),
-            "panchayat_id": str(first.get("panchayat_lgd", panchayat_id or "ALL")),
+            "panchayat_id": lgd,
+            "lgd_code": lgd,
         }
 
     def get_sector_scores_matrix(self, state=None, district=None, panchayat=None, state_id=None, district_id=None, panchayat_id=None):

@@ -145,7 +145,7 @@ def create_official_print_document(ward_a, ward_b, row_a, row_b, score_cols, val
                     html.Div(
                         [
                             html.P([html.Strong("DOC REF: "), html.Span(doc_ref)], style={"margin": "0", "fontSize": "7pt", "color": "#142D4E"}),
-                            html.P([html.Strong("DATE: "), html.Span(datetime.now().strftime("%d-%b-%Y"))], style={"margin": "1px 0", "fontSize": "7pt", "color": "#475569"}),
+                            html.P([html.Strong("DATE: "), html.Span(datetime.now().strftime("%d-%b-%Y"), id="print-official-date")], style={"margin": "1px 0", "fontSize": "7pt", "color": "#475569"}),
                             html.P([html.Strong("SECURITY: "), html.Span("OFFICIAL STATUTORY RECORD")], style={"margin": "1px 0", "fontSize": "6.8pt", "color": "#25845A", "fontWeight": "700"}),
                             html.P([html.Strong("STATUS: "), html.Span("GAZETTE VERIFIED")], style={"margin": "1px 0", "fontSize": "6.8pt", "color": "#1765BD", "fontWeight": "700"}),
                         ],
@@ -586,15 +586,38 @@ def create_comparison_content(engine, ward_a, ward_b, lang="en", state=None, dis
     cat_a = row_a["vulnerability_category"].values[0] if "vulnerability_category" in row_a.columns else "Moderate"
     cat_b = row_b["vulnerability_category"].values[0] if "vulnerability_category" in row_b.columns else "Moderate"
 
-    taluk_a = row_a["taluk"].values[0] if "taluk" in row_a.columns else "N/A"
-    const_a = row_a["assembly_constituency"].values[0] if "assembly_constituency" in row_a.columns else "N/A"
-    mla_a = row_a["mla_name"].values[0] if "mla_name" in row_a.columns else "N/A"
-    party_a = f" ({row_a['mla_party'].values[0]})" if "mla_party" in row_a.columns else ""
+    taluk_a = str(row_a["taluk"].values[0]) if ("taluk" in row_a.columns and pd.notnull(row_a["taluk"].values[0])) else "N/A"
+    const_a = str(row_a["assembly_constituency"].values[0]) if ("assembly_constituency" in row_a.columns and pd.notnull(row_a["assembly_constituency"].values[0])) else "N/A"
+    mla_a = str(row_a["mla_name"].values[0]) if ("mla_name" in row_a.columns and pd.notnull(row_a["mla_name"].values[0])) else "N/A"
+    party_a = f" ({row_a['mla_party'].values[0]})" if ("mla_party" in row_a.columns and pd.notnull(row_a['mla_party'].values[0])) else ""
 
-    taluk_b = row_b["taluk"].values[0] if "taluk" in row_b.columns else "N/A"
-    const_b = row_b["assembly_constituency"].values[0] if "assembly_constituency" in row_b.columns else "N/A"
-    mla_b = row_b["mla_name"].values[0] if "mla_name" in row_b.columns else "N/A"
-    party_b = f" ({row_b['mla_party'].values[0]})" if "mla_party" in row_b.columns else ""
+    taluk_b = str(row_b["taluk"].values[0]) if ("taluk" in row_b.columns and pd.notnull(row_b["taluk"].values[0])) else "N/A"
+    const_b = str(row_b["assembly_constituency"].values[0]) if ("assembly_constituency" in row_b.columns and pd.notnull(row_b["assembly_constituency"].values[0])) else "N/A"
+    mla_b = str(row_b["mla_name"].values[0]) if ("mla_name" in row_b.columns and pd.notnull(row_b["mla_name"].values[0])) else "N/A"
+    party_b = f" ({row_b['mla_party'].values[0]})" if ("mla_party" in row_b.columns and pd.notnull(row_b['mla_party'].values[0])) else ""
+
+    from data.panchayat_geography import get_panchayat_governance
+    if mla_a in ["N/A", "", "None"] and "panchayat_name" in row_a.columns:
+        p_name_a = str(row_a["panchayat_name"].values[0])
+        gov_a = get_panchayat_governance(p_name_a)
+        if gov_a and gov_a.get("mla_name") != "N/A":
+            mla_a = gov_a.get("mla_name")
+            party_a = f" ({gov_a.get('mla_party')})" if gov_a.get("mla_party") and gov_a.get("mla_party") != "N/A" else ""
+            if const_a == "N/A":
+                const_a = gov_a.get("assembly_constituency", "N/A")
+            if taluk_a == "N/A":
+                taluk_a = gov_a.get("taluk", "N/A")
+
+    if mla_b in ["N/A", "", "None"] and "panchayat_name" in row_b.columns:
+        p_name_b = str(row_b["panchayat_name"].values[0])
+        gov_b = get_panchayat_governance(p_name_b)
+        if gov_b and gov_b.get("mla_name") != "N/A":
+            mla_b = gov_b.get("mla_name")
+            party_b = f" ({gov_b.get('mla_party')})" if gov_b.get("mla_party") and gov_b.get("mla_party") != "N/A" else ""
+            if const_b == "N/A":
+                const_b = gov_b.get("assembly_constituency", "N/A")
+            if taluk_b == "N/A":
+                taluk_b = gov_b.get("taluk", "N/A")
 
     p1_a = row_a["priority_sector_1"].values[0] if "priority_sector_1" in row_a.columns else "N/A"
     p1_b = row_b["priority_sector_1"].values[0] if "priority_sector_1" in row_b.columns else "N/A"

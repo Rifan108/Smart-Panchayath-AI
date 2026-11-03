@@ -13,8 +13,25 @@
         'kn': 'kn-IN',
         'hi': 'hi-IN',
         'mr': 'mr-IN',
-        'ml': 'ml-IN'
+        'ml': 'ml-IN',
+        'ta': 'ta-IN',
+        'te': 'te-IN'
     };
+
+    function setNativeValue(element, value) {
+        const valueSetter = Object.getOwnPropertyDescriptor(element, 'value')?.set;
+        const prototype = Object.getPrototypeOf(element);
+        const prototypeValueSetter = Object.getOwnPropertyDescriptor(prototype, 'value')?.set;
+        if (prototypeValueSetter && valueSetter !== prototypeValueSetter) {
+            prototypeValueSetter.call(element, value);
+        } else if (valueSetter) {
+            valueSetter.call(element, value);
+        } else {
+            element.value = value;
+        }
+        element.dispatchEvent(new Event('input', { bubbles: true }));
+        element.dispatchEvent(new Event('change', { bubbles: true }));
+    }
 
     function initSpeechRecognition() {
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -48,8 +65,7 @@
             }
             const inputField = document.getElementById("assistant-text-input");
             if (inputField) {
-                inputField.value = transcript;
-                inputField.dispatchEvent(new Event("input", { bubbles: true }));
+                setNativeValue(inputField, transcript);
             }
         };
 
@@ -112,19 +128,7 @@
                     }
                 }
             }
-
-            // Keyboard enter key to send
-            const inputField = document.getElementById("assistant-text-input");
-            if (inputField && !inputField.dataset.enterBound) {
-                inputField.dataset.enterBound = "true";
-                inputField.addEventListener("keydown", function (ev) {
-                    if (ev.key === "Enter") {
-                        ev.preventDefault();
-                        const sendBtn = document.getElementById("assistant-send-btn");
-                        if (sendBtn) sendBtn.click();
-                    }
-                });
-            }
         });
     });
 })();
+

@@ -40,8 +40,8 @@ def test_sector_name_robustness():
 
 
 def test_voice_assistant_multilingual_responses():
-    """Test grounded responses across all 5 languages."""
-    languages = ["en", "kn", "hi", "mr", "ml"]
+    """Test grounded responses across all 7 languages."""
+    languages = ["en", "kn", "hi", "mr", "ml", "ta", "te"]
     for lang in languages:
         resp = voice_assistant_service.generate_response(
             query="Explain the budget allocation and priority sectors",
@@ -56,6 +56,44 @@ def test_voice_assistant_multilingual_responses():
         assert len(resp["response"]) > 20
         assert resp["language"] == lang
         assert resp["grounded"] is True
+
+
+def test_governance_multi_jurisdiction_and_panchayats():
+    """Test governance query precision and strict zero-fabrication rules."""
+    from services.analysis_service import get_engine
+    engine = get_engine()
+
+    # 1. National aggregated scope (ALL / ALL / ALL) must NEVER attribute single MLA
+    gov_all = engine.get_panchayat_governance(state="ALL", district="ALL", panchayat="ALL")
+    assert gov_all["is_specific_panchayat"] is False
+    assert gov_all["mla_name"] == "Select a specific Grama Panchayat"
+    assert "Multiple Constituencies" in gov_all["assembly_constituency"]
+
+    # 2. Bantwal GP (Karnataka)
+    gov_bantwal = engine.get_panchayat_governance(state="Karnataka", district="Dakshina Kannada", panchayat="Bantwal")
+    assert gov_bantwal["is_specific_panchayat"] is True
+    assert gov_bantwal["mla_name"] == "Rajesh Naik"
+    assert gov_bantwal["mla_party"] == "BJP"
+    assert gov_bantwal["assembly_constituency"] == "Bantwal"
+
+    # 3. Manjeshwar GP (Kerala)
+    gov_manj = engine.get_panchayat_governance(state="Kerala", district="Kasaragod", panchayat="Manjeshwar")
+    assert gov_manj["is_specific_panchayat"] is True
+    assert gov_manj["mla_name"] == "A. K. M. Ashraf"
+    assert gov_manj["mla_party"] == "IUML"
+    assert gov_manj["assembly_constituency"] == "Manjeshwaram"
+
+    # 4. Kuppam GP (Andhra Pradesh)
+    gov_kup = engine.get_panchayat_governance(state="Andhra Pradesh", district="Chittoor", panchayat="Kuppam")
+    assert gov_kup["is_specific_panchayat"] is True
+    assert gov_kup["mla_name"] == "N. Chandrababu Naidu"
+    assert gov_kup["mla_party"] == "TDP"
+
+    # 5. Baramati Rural GP (Maharashtra)
+    gov_bar = engine.get_panchayat_governance(state="Maharashtra", district="Pune", panchayat="Baramati Rural")
+    assert gov_bar["is_specific_panchayat"] is True
+    assert gov_bar["mla_name"] == "Ajit Pawar"
+    assert gov_bar["mla_party"] == "NCP"
 
 
 def test_voice_assistant_explain_components():

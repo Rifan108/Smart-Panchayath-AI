@@ -10,6 +10,7 @@ LANGUAGES = {
     "ta": {"name": "Tamil", "native": "தமிழ்", "flag": "🇮🇳"},
     "te": {"name": "Telugu", "native": "తెలుగు", "flag": "🇮🇳"},
     "mr": {"name": "Marathi", "native": "मराठी", "flag": "🇮🇳"},
+    "hi": {"name": "Hindi", "native": "हिन्दी", "flag": "🇮🇳"},
 }
 
 TRANSLATIONS = {
@@ -823,6 +824,7 @@ TRANSLATIONS = {
         "ta": "சுகாதாரம் மற்றும் துப்புரவு",
         "te": "ఆరోగ్యం మరియు పారిశుధ్యం",
         "mr": "आरोग्य आणि स्वच्छता",
+        "hi": "स्वास्थ्य और स्वच्छता",
     },
     "sector_education": {
         "en": "Education",
@@ -831,6 +833,7 @@ TRANSLATIONS = {
         "ta": "கல்வி",
         "te": "విద్య",
         "mr": "शिक्षण",
+        "hi": "शिक्षा",
     },
     "sector_infrastructure": {
         "en": "Infrastructure",
@@ -839,6 +842,7 @@ TRANSLATIONS = {
         "ta": "உள்கட்டமைப்பு",
         "te": "మౌలిక సదుపాయాలు",
         "mr": "पायाभूत सुविधा",
+        "hi": "बुनियादी ढांचा",
     },
     "sector_agriculture": {
         "en": "Agriculture & Food Security",
@@ -847,6 +851,7 @@ TRANSLATIONS = {
         "ta": "விவசாயம் மற்றும் உணவுப் பாதுகாப்பு",
         "te": "వ్యవసాయం మరియు ఆహార భద్రత",
         "mr": "शेती आणि अन्न सुरक्षा",
+        "hi": "कृषि और खाद्य सुरक्षा",
     },
     "sector_welfare": {
         "en": "Social Welfare",
@@ -855,6 +860,7 @@ TRANSLATIONS = {
         "ta": "சமூக நலன்",
         "te": "సాంఘిక సంక్షేమం",
         "mr": "समाज कल्याण",
+        "hi": "समाज कल्याण",
     },
     "sector_economic": {
         "en": "Economic Development",
@@ -863,6 +869,7 @@ TRANSLATIONS = {
         "ta": "பொருளாதார வளர்ச்சி",
         "te": "ఆర్థిక అభివృద్ధి",
         "mr": "आर्थिक विकास",
+        "hi": "आर्थिक विकास",
     },
     "sector_environment": {
         "en": "Environment & Disaster Mgmt",
@@ -871,6 +878,7 @@ TRANSLATIONS = {
         "ta": "சுற்றுச்சூழல் மற்றும் பேரிடர் மேலாண்மை",
         "te": "పర్యావరణం మరియు విపత్తు నిర్వహణ",
         "mr": "पर्यावरण आणि आपत्ती व्यवस्थापन",
+        "hi": "पर्यावरण और आपदा प्रबंधन",
     },
     "sector_digital": {
         "en": "Digital & E-Governance",
@@ -879,12 +887,13 @@ TRANSLATIONS = {
         "ta": "டிஜிட்டல் மற்றும் மின்-ஆளுமை",
         "te": "డిజిటల్ మరియు ఇ-పరిపాలన",
         "mr": "डिजिटल आणि ई-प्रशासन",
+        "hi": "डिजिटल और ई-गवर्नेंस",
     },
 
     # ─── Vulnerability Categories ───
-    "vuln_low": {"en": "Low", "ml": "കുറവ്", "kn": "ಕಡಿಮೆ", "ta": "குறைவு", "te": "తక్కువ", "mr": "कमी"},
-    "vuln_medium": {"en": "Medium", "ml": "ഇടത്തരം", "kn": "ಮಧ್ಯಮ", "ta": "நடுத்தர", "te": "మధ్యస్థం", "mr": "मध्यम"},
-    "vuln_high": {"en": "High", "ml": "ഉയർന്നത്", "kn": "ಹೆಚ್ಚು", "ta": "அதிக", "te": "ఎక్కువ", "mr": "जास्त"},
+    "vuln_low": {"en": "Low", "ml": "കുറവ്", "kn": "ಕಡಿಮೆ", "ta": "குறைவு", "te": "తక్కువ", "mr": "कमी", "hi": "कम"},
+    "vuln_medium": {"en": "Medium", "ml": "ഇടത്തരം", "kn": "ಮಧ್ಯಮ", "ta": "நடுத்தர", "te": "మధ్యస్థం", "mr": "मध्यम", "hi": "मध्यम"},
+    "vuln_high": {"en": "High", "ml": "ഉയർന്നത്", "kn": "ಹೆಚ್ಚು", "ta": "அதிக", "te": "ఎక్కువ", "mr": "जास्त", "hi": "उच्च"},
 
     # ─── Auth Translations ───
     "auth_signin_title": {

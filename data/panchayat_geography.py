@@ -572,23 +572,39 @@ def get_location_lgd_identifiers(state, district=None, panchayat=None):
 
 def get_panchayat_governance(panchayat_name):
     """Retrieve Taluk, Assembly Constituency, MLA, Party, and LGD Code for any panchayat."""
-    if not panchayat_name:
-        return {"taluk": "N/A", "constituency": "N/A", "mla": "N/A", "party": "N/A", "lgd_code": "N/A"}
+    if not panchayat_name or str(panchayat_name).strip().upper() in ["ALL", "NONE", ""]:
+        return {
+            "state": "N/A", "district": "N/A", "panchayat": "N/A", "panchayat_name": "N/A",
+            "taluk": "N/A", "constituency": "N/A", "assembly_constituency": "N/A",
+            "mla": "N/A", "mla_name": "N/A", "party": "N/A", "mla_party": "N/A",
+            "lgd_code": "N/A", "panchayat_id": "N/A", "is_specific_panchayat": False,
+        }
 
     # Exact match first
     for s_name, s_info in STATES_PANCHAYAT_DATA.items():
         for d_name, d_info in s_info.get("districts", {}).items():
             if panchayat_name in d_info.get("panchayats", {}):
                 p = d_info["panchayats"][panchayat_name]
+                mla_val = p.get("mla", "N/A")
+                party_val = p.get("party", "N/A")
+                ac_val = p.get("constituency", "N/A")
+                taluk_val = p.get("taluk", "N/A")
+                lgd_val = p.get("lgd_code", "N/A")
                 return {
                     "state": s_name,
                     "district": d_name,
                     "panchayat": panchayat_name,
-                    "taluk": p.get("taluk", "N/A"),
-                    "constituency": p.get("constituency", "N/A"),
-                    "mla": p.get("mla", "N/A"),
-                    "party": p.get("party", "N/A"),
-                    "lgd_code": p.get("lgd_code", "N/A"),
+                    "panchayat_name": panchayat_name,
+                    "taluk": taluk_val,
+                    "constituency": ac_val,
+                    "assembly_constituency": ac_val,
+                    "mla": mla_val,
+                    "mla_name": mla_val,
+                    "party": party_val,
+                    "mla_party": party_val,
+                    "lgd_code": lgd_val,
+                    "panchayat_id": lgd_val,
+                    "is_specific_panchayat": True,
                 }
 
     # Case-insensitive / partial match fallback
@@ -597,15 +613,31 @@ def get_panchayat_governance(panchayat_name):
         for d_name, d_info in s_info.get("districts", {}).items():
             for p_key, p in d_info.get("panchayats", {}).items():
                 if p_key.lower() == target_clean or target_clean in p_key.lower() or p_key.lower() in target_clean:
+                    mla_val = p.get("mla", "N/A")
+                    party_val = p.get("party", "N/A")
+                    ac_val = p.get("constituency", "N/A")
+                    taluk_val = p.get("taluk", "N/A")
+                    lgd_val = p.get("lgd_code", "N/A")
                     return {
                         "state": s_name,
                         "district": d_name,
                         "panchayat": p_key,
-                        "taluk": p.get("taluk", "N/A"),
-                        "constituency": p.get("constituency", "N/A"),
-                        "mla": p.get("mla", "N/A"),
-                        "party": p.get("party", "N/A"),
-                        "lgd_code": p.get("lgd_code", "N/A"),
+                        "panchayat_name": p_key,
+                        "taluk": taluk_val,
+                        "constituency": ac_val,
+                        "assembly_constituency": ac_val,
+                        "mla": mla_val,
+                        "mla_name": mla_val,
+                        "party": party_val,
+                        "mla_party": party_val,
+                        "lgd_code": lgd_val,
+                        "panchayat_id": lgd_val,
+                        "is_specific_panchayat": True,
                     }
 
-    return {"taluk": "N/A", "constituency": "N/A", "mla": "N/A", "party": "N/A", "lgd_code": "N/A"}
+    return {
+        "state": "N/A", "district": "N/A", "panchayat": str(panchayat_name), "panchayat_name": str(panchayat_name),
+        "taluk": "N/A", "constituency": "N/A", "assembly_constituency": "N/A",
+        "mla": "N/A", "mla_name": "N/A", "party": "N/A", "mla_party": "N/A",
+        "lgd_code": "N/A", "panchayat_id": "N/A", "is_specific_panchayat": False,
+    }

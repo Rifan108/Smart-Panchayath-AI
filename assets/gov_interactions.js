@@ -69,6 +69,16 @@ window.printReport = function () {
         docEl.style.display = 'block';
         docEl.style.visibility = 'visible';
     }
+    // Update live statutory print date to today's local client date
+    const dateSpan = document.getElementById('print-official-date');
+    if (dateSpan) {
+        const today = new Date();
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const day = String(today.getDate()).padStart(2, '0');
+        const month = months[today.getMonth()];
+        const year = today.getFullYear();
+        dateSpan.innerText = ${day}--;
+    }
     window.print();
     setTimeout(function () {
         document.body.classList.remove('printing-official-report');

@@ -774,10 +774,10 @@ class AnalysisEngine:
         Produce verified Census demographic breakdown for the currently selected location.
         """
         df = self.get_filtered_df(state=state, district=district, panchayat=panchayat)
-        if df.empty:
-            df = self.df_processed
+        if df is None or (hasattr(df, "empty") and df.empty):
+            df = self.df_processed if self.df_processed is not None else pd.DataFrame()
 
-        total_pop = int(df["population"].sum()) if "population" in df.columns else 35000
+        total_pop = int(df["population"].sum()) if (hasattr(df, "columns") and "population" in df.columns) else 35000
         sc_st_pct = float(df["sc_st_population_pct"].mean()) if "sc_st_population_pct" in df.columns else 10.5
         sc_st_pop = int(round(total_pop * (sc_st_pct / 100.0)))
         gen_pop = total_pop - sc_st_pop

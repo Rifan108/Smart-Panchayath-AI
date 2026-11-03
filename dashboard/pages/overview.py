@@ -82,11 +82,12 @@ def create_mini_donut_svg(sectors_data=None, total_budget_cr=50.0, lang="en"):
         amt_str = f"₹{amt_cr:.1f} Cr" if amt_cr >= 1.0 else f"₹{int(amt_cr * 100)}L"
         active_cls = "active-slice" if idx == 0 else ""
         paths_html.append(
-            f'<path class="donut-slice {active_cls}" data-sector="{display_name}" data-val="{pct}%" data-color="{color}" data-desc="{display_name} ({amt_str})" fill="{color}" stroke="#FFFFFF" stroke-width="1.5" d="{path_d}"><title>{display_name}: {pct}% ({amt_str})</title></path>'
+            f'<path class="donut-slice {active_cls}" data-index="{idx}" data-sector="{display_name}" data-val="{pct}%" data-color="{color}" data-amt="{amt_str}" data-desc="{display_name} ({amt_str})" fill="{color}" stroke="#FFFFFF" stroke-width="1.5" d="{path_d}"><title>{display_name}: {pct}% ({amt_str})</title></path>'
         )
         current_angle += sweep
 
     paths_str = "\n        ".join(paths_html)
+    short_display = (first_display[:11] + "…") if len(first_display) > 12 else first_display
     svg_html = f"""
 <div class="interactive-donut-wrapper" id="interactive-hero-donut" title="Tap any slice or legend item to inspect values">
     <div id="donut-hover-tooltip" class="donut-tooltip">📊 {first_display}: {first_pct}% ({first_amt_str})</div>
@@ -95,7 +96,7 @@ def create_mini_donut_svg(sectors_data=None, total_budget_cr=50.0, lang="en"):
     </svg>
     <div class="donut-center-overlay" id="donut-center-overlay">
         <span id="donut-center-val" class="donut-center-val" style="color: {first_color};">{first_pct}%</span>
-        <span id="donut-center-lbl" class="donut-center-lbl">{first_display[:10]}</span>
+        <span id="donut-center-lbl" class="donut-center-lbl" title="{first_display}">{short_display}</span>
         <span id="donut-center-sub" class="donut-center-sub" style="color: {first_color};">{first_amt_str}</span>
     </div>
 </div>
@@ -204,7 +205,14 @@ def create_overview_layout(engine, state=None, district=None, panchayat=None, ye
             ],
             className=f"donut-legend-item {'active-legend' if idx == 0 else ''}",
             title=f"Tap to inspect {get_sector_name(name, lang)} allocation",
-            **{"data-sector": get_sector_name(name, lang)},
+            **{
+                "data-index": str(idx),
+                "data-sector": get_sector_name(name, lang),
+                "data-val": f"{pct}%",
+                "data-amt": f"₹{amt_cr:.1f} Cr" if amt_cr >= 1.0 else f"₹{int(amt_cr * 100)}L",
+                "data-color": color,
+                "data-desc": f"{get_sector_name(name, lang)} ({f'₹{amt_cr:.1f} Cr' if amt_cr >= 1.0 else f'₹{int(amt_cr * 100)}L'})",
+            },
         )
         for idx, (name, pct, amt_cr, color) in enumerate(top_sectors_data)
     ]

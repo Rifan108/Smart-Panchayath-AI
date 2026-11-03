@@ -77,7 +77,7 @@ window.printReport = function () {
         const day = String(today.getDate()).padStart(2, '0');
         const month = months[today.getMonth()];
         const year = today.getFullYear();
-        dateSpan.innerText = ${day}--;
+        dateSpan.innerText = day + '-' + month + '-' + year;
     }
     window.print();
     setTimeout(function () {
@@ -225,43 +225,64 @@ function handleDonutInteraction(e) {
     if (!e || !e.target) return;
     const target = e.target;
 
-    // Fast path: if not an SVG element or legend item, exit immediately (0.00ms)
-    const isSvgEl = target.nodeName === "path" || target.nodeName === "circle" || target.nodeName === "text";
-    const isLegend = target.classList && (target.classList.contains("donut-legend-item") || (target.closest && target.closest(".donut-legend-item")));
-    if (!isSvgEl && !isLegend) {
-        return;
-    }
-
+    // Check if target or any ancestor is a donut-slice or donut-legend-item
     let slice = target.closest ? target.closest(".donut-slice") : null;
     let legend = target.closest ? target.closest(".donut-legend-item") : null;
 
+    // Mobile touch point fallback
     if (!slice && !legend && e.touches && e.touches.length > 0) {
-        const el = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
-        if (el && el.closest) {
-            slice = el.closest(".donut-slice");
-            legend = el.closest(".donut-legend-item");
-        }
+        try {
+            const el = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
+            if (el && el.closest) {
+                slice = el.closest(".donut-slice");
+                legend = el.closest(".donut-legend-item");
+            }
+        } catch (_) {}
     }
+
     if (!slice && !legend) return;
 
-    let targetSector = "";
-    let targetSlice = null;
+    // Determine target index and data
+    const activeEl = slice || legend;
+    let idx = activeEl.getAttribute("data-index");
 
-    if (slice) {
-        targetSlice = slice;
-        targetSector = slice.getAttribute("data-sector");
-    } else if (legend) {
-        targetSector = legend.getAttribute("data-sector");
-        targetSlice = document.querySelector(`.donut-slice[data-sector="${targetSector}"]`);
+    // If data-index attribute is missing, determine index by DOM position
+    if (idx === null || idx === undefined || idx === "") {
+        if (slice) {
+            const allSlices = Array.from(document.querySelectorAll(".donut-slice"));
+            idx = String(allSlices.indexOf(slice));
+        } else if (legend) {
+            const allLegends = Array.from(document.querySelectorAll(".donut-legend-item"));
+            idx = String(allLegends.indexOf(legend));
+        }
     }
 
-    if (!targetSlice) return;
+    // Resolve matching slice and legend elements
+    const targetSlice = slice || (idx !== null ? document.querySelector('.donut-slice[data-index="' + idx + '"]') : null);
+    const targetLegend = legend || (idx !== null ? document.querySelector('.donut-legend-item[data-index="' + idx + '"]') : null);
 
-    const sector = targetSlice.getAttribute("data-sector") || "Water";
-    const val = targetSlice.getAttribute("data-val") || "32%";
-    const color = targetSlice.getAttribute("data-color") || "#142D4E";
-    const desc = targetSlice.getAttribute("data-desc") || "";
+    // Extract values with safe fallbacks
+    const sector = activeEl.getAttribute("data-sector") || 
+                   (targetSlice && targetSlice.getAttribute("data-sector")) || 
+                   (targetLegend && targetLegend.getAttribute("data-sector")) || "Sector";
 
+    const val = activeEl.getAttribute("data-val") || 
+                (targetSlice && targetSlice.getAttribute("data-val")) || 
+                (targetLegend && targetLegend.getAttribute("data-val")) || "0%";
+
+    const color = activeEl.getAttribute("data-color") || 
+                  (targetSlice && targetSlice.getAttribute("data-color")) || 
+                  (targetLegend && targetLegend.getAttribute("data-color")) || "#142D4E";
+
+    const amt = activeEl.getAttribute("data-amt") || 
+                (targetSlice && targetSlice.getAttribute("data-amt")) || 
+                (targetLegend && targetLegend.getAttribute("data-amt")) || "";
+
+    const desc = activeEl.getAttribute("data-desc") || 
+                 (targetSlice && targetSlice.getAttribute("data-desc")) || 
+                 (targetLegend && targetLegend.getAttribute("data-desc")) || "";
+
+    // Update Center Overlay Elements
     const centerVal = document.getElementById("donut-center-val");
     const centerLbl = document.getElementById("donut-center-lbl");
     const centerSub = document.getElementById("donut-center-sub");
@@ -272,19 +293,28 @@ function handleDonutInteraction(e) {
         centerVal.style.color = color;
         centerVal.setAttribute("fill", color);
         centerVal.classList.remove("donut-pop");
-        void centerVal.offsetWidth;
+        void centerVal.offsetWidth; // Trigger reflow for animation restart
         centerVal.classList.add("donut-pop");
     }
+
     if (centerLbl) {
-        centerLbl.textContent = sector;
+        centerLbl.textContent = sector.length > 12 ? sector.slice(0, 11) + "…" : sector;
+        centerLbl.title = sector;
     }
+
     if (centerSub) {
-        centerSub.textContent = desc.includes("(") ? desc.split("(")[1].replace(")", "") : "Active";
+        let displayAmt = amt;
+        if (!displayAmt && desc.includes("(")) {
+            displayAmt = desc.split("(")[1].replace(")", "");
+        }
+        centerSub.textContent = displayAmt || "Active";
         centerSub.style.color = color;
         centerSub.setAttribute("fill", color);
     }
+
     if (tooltip) {
-        tooltip.textContent = `📊 ${sector}: ${val} (${desc.includes("(") ? desc.split("(")[1].replace(")", "") : desc})`;
+        const displayAmt = amt || (desc.includes("(") ? desc.split("(")[1].replace(")", "") : "");
+        tooltip.textContent = "📊 " + sector + ": " + val + (displayAmt ? " (" + displayAmt + ")" : "");
         tooltip.classList.add("visible");
         clearTimeout(window._donutTooltipTimer);
         window._donutTooltipTimer = setTimeout(() => {
@@ -294,25 +324,59 @@ function handleDonutInteraction(e) {
 
     // Highlight active slice
     document.querySelectorAll(".donut-slice").forEach(s => s.classList.remove("active-slice"));
-    targetSlice.classList.add("active-slice");
+    if (targetSlice) {
+        targetSlice.classList.add("active-slice");
+    } else if (idx !== null) {
+        const slices = document.querySelectorAll(".donut-slice");
+        if (slices[idx]) slices[idx].classList.add("active-slice");
+    }
 
-    // Also highlight matching legend item
-    document.querySelectorAll(".donut-legend-item").forEach(item => {
-        if (item.getAttribute("data-sector") === targetSector) {
-            item.classList.add("active-legend");
-        } else {
-            item.classList.remove("active-legend");
-        }
-    });
+    // Highlight active legend item
+    document.querySelectorAll(".donut-legend-item").forEach(item => item.classList.remove("active-legend"));
+    if (targetLegend) {
+        targetLegend.classList.add("active-legend");
+    } else if (idx !== null) {
+        const legends = document.querySelectorAll(".donut-legend-item");
+        if (legends[idx]) legends[idx].classList.add("active-legend");
+    }
 }
 
 function attachDonutListeners() {
-    document.querySelectorAll(".donut-markdown-container, .donut-legend-list").forEach(el => {
-        if (!el._hasDonutListener) {
-            el._hasDonutListener = true;
+    // Attach directly to slices
+    document.querySelectorAll(".donut-slice").forEach(slice => {
+        if (!slice._hasDonutListener) {
+            slice._hasDonutListener = true;
+            slice.style.cursor = "pointer";
+            slice.addEventListener("pointerdown", handleDonutInteraction, { passive: true });
+            slice.addEventListener("click", handleDonutInteraction, { passive: true });
+            slice.addEventListener("touchstart", handleDonutInteraction, { passive: true });
+            slice.addEventListener("mouseover", handleDonutInteraction, { passive: true });
+        }
+    });
+
+    // Attach directly to legend items
+    document.querySelectorAll(".donut-legend-item").forEach(item => {
+        if (!item._hasDonutListener) {
+            item._hasDonutListener = true;
+            item.style.cursor = "pointer";
+            item.addEventListener("pointerdown", handleDonutInteraction, { passive: true });
+            item.addEventListener("click", handleDonutInteraction, { passive: true });
+            item.addEventListener("touchstart", handleDonutInteraction, { passive: true });
+            item.addEventListener("mouseover", handleDonutInteraction, { passive: true });
+        }
+    });
+
+    // Also attach to containers for delegated events
+    document.querySelectorAll(".donut-markdown-container, .donut-legend-list, .interactive-donut-wrapper").forEach(el => {
+        if (!el._hasDonutContainerListener) {
+            el._hasDonutContainerListener = true;
+            el.addEventListener("pointerdown", handleDonutInteraction, { passive: true });
+            el.addEventListener("click", handleDonutInteraction, { passive: true });
+            el.addEventListener("touchstart", handleDonutInteraction, { passive: true });
             el.addEventListener("mouseover", handleDonutInteraction, { passive: true });
         }
     });
+
     // Set native lazy loading on images dynamically
     document.querySelectorAll("img").forEach(img => {
         if (!img.hasAttribute("loading")) {
@@ -322,8 +386,9 @@ function attachDonutListeners() {
     });
 }
 
-document.addEventListener("pointerdown", handleDonutInteraction);
-document.addEventListener("click", handleDonutInteraction);
+document.addEventListener("pointerdown", handleDonutInteraction, { passive: true });
+document.addEventListener("click", handleDonutInteraction, { passive: true });
+document.addEventListener("touchstart", handleDonutInteraction, { passive: true });
 document.addEventListener("DOMContentLoaded", attachDonutListeners);
 
 if (typeof MutationObserver !== "undefined") {
@@ -338,4 +403,3 @@ if (typeof MutationObserver !== "undefined") {
         });
     }
 }
-

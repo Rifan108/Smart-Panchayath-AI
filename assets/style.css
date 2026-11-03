@@ -3812,15 +3812,20 @@ body.font-size-small {
 }
 
 .donut-center-lbl {
-    font-size: 0.65rem;
+    font-size: 0.62rem;
     font-weight: 700;
     color: #64748B;
     line-height: 1.1;
     text-transform: uppercase;
-    letter-spacing: 0.3px;
+    letter-spacing: 0.2px;
     font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif;
     display: block;
     margin-top: 2px;
+    max-width: 60px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 0 1px;
 }
 
 .donut-center-sub {

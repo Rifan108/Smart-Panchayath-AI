@@ -11,6 +11,7 @@ Exposes high-performance, strictly-scoped geographic endpoints:
 - GET /api/health
 """
 
+from datetime import datetime
 import numpy as np
 import pandas as pd
 from flask import Blueprint, jsonify, request
@@ -724,3 +725,151 @@ def get_sectors():
     }
     set_cached_data(res, *cache_key)
     return jsonify(res)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# MULTILINGUAL AI VOICE ASSISTANT ENDPOINTS
+# ─────────────────────────────────────────────────────────────────────────────
+from services.voice_assistant_service import get_voice_assistant
+
+
+@api_bp.route("/assistant/chat", methods=["POST"])
+def assistant_chat():
+    """
+    Multilingual conversational endpoint for Smart AI Panchayat.
+    Accepts question, language, location scope, and history.
+    Returns strictly grounded answer, data snapshot, source provenance, and synthesized audio.
+    """
+    va = get_voice_assistant()
+    data = request.get_json(silent=True) or {}
+
+    query = data.get("message") or data.get("query") or "Overview of this Panchayat"
+    language = data.get("language") or "en"
+    state = data.get("state") or data.get("state_name")
+    district = data.get("district") or data.get("district_name")
+    panchayat = data.get("panchayat") or data.get("panchayat_name")
+    year = data.get("financial_year") or data.get("year") or "2026-27"
+    history = data.get("history") or []
+
+    res = va.generate_response(
+        query=query,
+        language=language,
+        state=state,
+        district=district,
+        panchayat=panchayat,
+        year=year,
+        history=history,
+    )
+
+    # Optional speech synthesis
+    synthesize_audio = data.get("synthesize_audio", True)
+    if synthesize_audio:
+        res["audio_base64"] = va.text_to_speech_base64(res["reply"], language=language)
+    else:
+        res["audio_base64"] = None
+
+    return jsonify(_sanitize_for_json(res))
+
+
+@api_bp.route("/assistant/explain", methods=["POST"])
+def assistant_explain_component():
+    """
+    'Explain This' contextual chart and card explanation endpoint.
+    Explains the exact metric distribution, highest/lowest sectors, and methodology.
+    """
+    va = get_voice_assistant()
+    data = request.get_json(silent=True) or {}
+
+    comp_id = data.get("component_id", "chart_overview")
+    comp_title = data.get("component_title", "Dashboard Component")
+    language = data.get("language", "en")
+    state = data.get("state")
+    district = data.get("district")
+    panchayat = data.get("panchayat")
+    year = data.get("year", "2026-27")
+
+    comp_context = {
+        "id": comp_id,
+        "title": comp_title,
+        "chart_data": data.get("component_data", {}),
+    }
+
+    prompt = f"Explain the dashboard chart: {comp_title}. Detail what the numbers indicate, highest/lowest gaps, and action recommendations."
+
+    res = va.generate_response(
+        query=prompt,
+        language=language,
+        state=state,
+        district=district,
+        panchayat=panchayat,
+        year=year,
+        component_context=comp_context,
+    )
+    res["audio_base64"] = va.text_to_speech_base64(res["reply"], language=language)
+
+    return jsonify(_sanitize_for_json(res))
+
+
+@api_bp.route("/assistant/tts", methods=["POST"])
+def assistant_tts():
+    """Generate base64 encoded natural Indic voice MP3 from text."""
+    va = get_voice_assistant()
+    data = request.get_json(silent=True) or {}
+    text = data.get("text", "")
+    language = data.get("language", "en")
+
+    if not text:
+        return jsonify({"error": "Missing 'text' parameter"}), 400
+
+    audio_b64 = va.text_to_speech_base64(text, language=language)
+    return jsonify({
+        "audio_base64": audio_b64,
+        "language": language,
+        "length_chars": len(text),
+    })
+
+
+@api_bp.route("/assistant/insights", methods=["GET"])
+def assistant_proactive_insights():
+    """Retrieve proactive developmental intelligence and key alerts for the active Panchayat."""
+    va = get_voice_assistant()
+    state = request.args.get("state")
+    district = request.args.get("district")
+    panchayat = request.args.get("panchayat")
+    year = request.args.get("year", "2026-27")
+    lang = request.args.get("language", "en")
+
+    ctx = va.retrieve_grounded_context(state=state, district=district, panchayat=panchayat, year=year)
+    p_name = ctx["location"]["panchayat"]
+    s_name = ctx["location"]["state"]
+    top_sec = ctx["top_sector"]["name"]
+    top_score = ctx["top_sector"]["score"]
+    tot_pop = ctx["demographics"]["total_population"]
+
+    insights = [
+        {
+            "category": "Priority 1 Development Deficit",
+            "title": f"Critical Need in {top_sec}",
+            "description": f"Model identified deficit score of {top_score:.3f} requiring immediate capital works.",
+            "type": "alert",
+        },
+        {
+            "category": "Statutory Budget Outlay",
+            "title": f"₹{ctx['lp_budget']['total_plan_fund_lakhs']:.1f}L Recommended SFC Allocation",
+            "description": f"SciPy HiGHS LP Solver allocated ₹{ctx['lp_budget']['allocations'][0]['amount_lakhs']}L ({ctx['lp_budget']['allocations'][0]['pct']}%) to primary deficit.",
+            "type": "budget",
+        },
+        {
+            "category": "Census Demographics",
+            "title": f"{tot_pop:,} Verified Citizen Coverage",
+            "description": f"Literacy rate stands at {ctx['demographics']['literacy_rate']}%, with {ctx['demographics']['high_need_wards']} high-deficit wards audited.",
+            "type": "demographic",
+        },
+    ]
+
+    return jsonify({
+        "panchayat": p_name,
+        "state": s_name,
+        "insights": insights,
+        "timestamp": datetime.now().isoformat(),
+    })

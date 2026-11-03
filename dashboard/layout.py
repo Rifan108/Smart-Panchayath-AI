@@ -10,6 +10,7 @@ from dash import html, dcc
 from services.i18n import LANGUAGES, t
 from data.panchayat_geography import STATES_PANCHAYAT_DATA
 from services.provenance_service import ProvenanceService
+from dashboard.components.voice_assistant import create_voice_assistant_widget
 
 
 def create_top_government_bar(lang="en"):
@@ -606,6 +607,9 @@ def create_layout():
             
             # Official Government Footer Container (Dynamically localized)
             html.Div(id="dynamic-footer-container", children=create_government_footer("en")),
+            
+            # Smart AI Panchayat Multilingual Voice Assistant
+            create_voice_assistant_widget(),
         ],
         className="app-root",
     )

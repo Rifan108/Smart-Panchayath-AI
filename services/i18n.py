@@ -1520,18 +1520,32 @@ def t(key, lang="en"):
 
 
 def get_sector_name(sector_en, lang="en"):
-    """Get localized sector name."""
+    """Get localized sector name robust to formatting differences."""
+    if not sector_en:
+        return ""
     mapping = {
         "Health & Sanitation": "sector_health",
+        "Health and Sanitation": "sector_health",
+        "Health & sanitation": "sector_health",
         "Education": "sector_education",
         "Infrastructure": "sector_infrastructure",
         "Agriculture & Food Security": "sector_agriculture",
+        "Agriculture and Food Security": "sector_agriculture",
         "Social Welfare": "sector_welfare",
         "Economic Development": "sector_economic",
         "Environment & Disaster Mgmt": "sector_environment",
+        "Environment and Disaster Mgmt": "sector_environment",
+        "Water & Disaster Mgmt": "sector_environment",
+        "Water and Disaster Mgmt": "sector_environment",
         "Digital & E-Governance": "sector_digital",
+        "Digital and E-Governance": "sector_digital",
+        "Digital and E Governance": "sector_digital",
+        "Digital & E Governance": "sector_digital",
     }
-    key = mapping.get(sector_en)
+    key = mapping.get(str(sector_en).strip())
+    if not key:
+        normalized = str(sector_en).replace("_and_", " & ").replace(" and ", " & ").replace("_", " ").title().strip()
+        key = mapping.get(normalized)
     if key:
         return t(key, lang)
-    return sector_en
+    return str(sector_en).replace("_and_", " & ").replace("_", " ").title()

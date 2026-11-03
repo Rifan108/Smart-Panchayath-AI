@@ -941,7 +941,10 @@ def create_overview_layout(engine, state=None, district=None, panchayat=None, ye
                         [
                             html.Div(
                                 [
-                                    html.Div([html.Span("A. Sector-Wise Development Need Index", className="card-viz-title"), html.Small("Vulnerability Scoring", className="card-viz-sub")]),
+                                    html.Div([
+                                        html.Div([html.Span("A. Sector-Wise Development Need Index", className="card-viz-title"), html.Small("Vulnerability Scoring", className="card-viz-sub")]),
+                                        html.Button("💡 Explain", id="btn-explain-chart-a", className="btn-explain-chart ms-auto", n_clicks=0, title="Explain Sector Need Index in Voice & Text"),
+                                    ], className="d-flex align-items-center justify-content-between mb-2"),
                                     dcc.Graph(figure=fig_a, style={"height": "340px", "width": "100%", "minHeight": "340px"}, config={"displayModeBar": False, "scrollZoom": False, "responsive": True}),
                                 ],
                                 className="govt-card p-3 h-100",
@@ -955,7 +958,10 @@ def create_overview_layout(engine, state=None, district=None, panchayat=None, ye
                         [
                             html.Div(
                                 [
-                                    html.Div([html.Span("B. Recommended Sector Budget Outlay", className="card-viz-title"), html.Small("SciPy HiGHS LP Solver", className="card-viz-sub")]),
+                                    html.Div([
+                                        html.Div([html.Span("B. Recommended Sector Budget Outlay", className="card-viz-title"), html.Small("SciPy HiGHS LP Solver", className="card-viz-sub")]),
+                                        html.Button("💡 Explain", id="btn-explain-chart-b", className="btn-explain-chart ms-auto", n_clicks=0, title="Explain Budget Outlays in Voice & Text"),
+                                    ], className="d-flex align-items-center justify-content-between mb-2"),
                                     dcc.Graph(figure=fig_b, style={"height": "340px", "width": "100%", "minHeight": "340px"}, config={"displayModeBar": False, "scrollZoom": False, "responsive": True}),
                                 ],
                                 className="govt-card p-3 h-100",
@@ -976,7 +982,10 @@ def create_overview_layout(engine, state=None, district=None, panchayat=None, ye
                         [
                             html.Div(
                                 [
-                                    html.Div([html.Span("C. Population Demographics & Need Profile", className="card-viz-title"), html.Small("Ward Breakdown", className="card-viz-sub")]),
+                                    html.Div([
+                                        html.Div([html.Span("C. Population Demographics & Need Profile", className="card-viz-title"), html.Small("Ward Breakdown", className="card-viz-sub")]),
+                                        html.Button("💡 Explain", id="btn-explain-chart-c", className="btn-explain-chart ms-auto", n_clicks=0, title="Explain Demographics in Voice & Text"),
+                                    ], className="d-flex align-items-center justify-content-between mb-2"),
                                     dcc.Graph(figure=fig_c, style={"height": "320px", "width": "100%", "minHeight": "320px"}, config={"displayModeBar": False, "scrollZoom": False, "responsive": True}),
                                 ],
                                 className="govt-card p-3 h-100",
@@ -990,7 +999,10 @@ def create_overview_layout(engine, state=None, district=None, panchayat=None, ye
                         [
                             html.Div(
                                 [
-                                    html.Div([html.Span("D. Infrastructure Availability & Coverage", className="card-viz-title"), html.Small("Public Service Delivery %", className="card-viz-sub")]),
+                                    html.Div([
+                                        html.Div([html.Span("D. Infrastructure Availability & Coverage", className="card-viz-title"), html.Small("Public Service Delivery %", className="card-viz-sub")]),
+                                        html.Button("💡 Explain", id="btn-explain-chart-d", className="btn-explain-chart ms-auto", n_clicks=0, title="Explain Infrastructure Coverage in Voice & Text"),
+                                    ], className="d-flex align-items-center justify-content-between mb-2"),
                                     dcc.Graph(figure=fig_d, style={"height": "320px", "width": "100%", "minHeight": "320px"}, config={"displayModeBar": False, "scrollZoom": False, "responsive": True}),
                                 ],
                                 className="govt-card p-3 h-100",
@@ -1011,7 +1023,10 @@ def create_overview_layout(engine, state=None, district=None, panchayat=None, ye
                         [
                             html.Div(
                                 [
-                                    html.Div([html.Span("E. Priority 1 Deficit Distribution", className="card-viz-title"), html.Small("Most Urgent Verticals", className="card-viz-sub")]),
+                                    html.Div([
+                                        html.Div([html.Span("E. Priority 1 Deficit Distribution", className="card-viz-title"), html.Small("Most Urgent Verticals", className="card-viz-sub")]),
+                                        html.Button("💡 Explain", id="btn-explain-chart-e", className="btn-explain-chart ms-auto", n_clicks=0, title="Explain Priority 1 Deficits in Voice & Text"),
+                                    ], className="d-flex align-items-center justify-content-between mb-2"),
                                     dcc.Graph(figure=fig_e, style={"height": "320px", "width": "100%", "minHeight": "320px"}, config={"displayModeBar": False, "scrollZoom": False, "responsive": True}),
                                 ],
                                 className="govt-card p-3 h-100",
@@ -1025,7 +1040,10 @@ def create_overview_layout(engine, state=None, district=None, panchayat=None, ye
                         [
                             html.Div(
                                 [
-                                    html.Div([html.Span("F. Historical Development Progress & Multi-Year Trend", className="card-viz-title"), html.Small("Continuous Index Trajectory", className="card-viz-sub")]),
+                                    html.Div([
+                                        html.Div([html.Span("F. Historical Development Progress & Multi-Year Trend", className="card-viz-title"), html.Small("Continuous Index Trajectory", className="card-viz-sub")]),
+                                        html.Button("💡 Explain", id="btn-explain-chart-f", className="btn-explain-chart ms-auto", n_clicks=0, title="Explain Multi-Year Trajectory in Voice & Text"),
+                                    ], className="d-flex align-items-center justify-content-between mb-2"),
                                     dcc.Graph(figure=fig_f, style={"height": "320px", "width": "100%", "minHeight": "320px"}, config={"displayModeBar": False, "scrollZoom": False, "responsive": True}),
                                 ],
                                 className="govt-card p-3 h-100",

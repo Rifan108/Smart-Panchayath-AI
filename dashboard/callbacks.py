@@ -931,3 +931,186 @@ def register_callbacks(app, engine):
 
 
 
+
+
+    # ─── 15. Multilingual Voice Assistant Drawer Controller ─────────────────
+    from services.voice_assistant_service import voice_assistant_service
+
+    @app.callback(
+        Output("assistant-open-store", "data"),
+        Output("voice-assistant-panel", "className"),
+        Input("btn-open-assistant", "n_clicks"),
+        Input("btn-close-assistant", "n_clicks"),
+        State("assistant-open-store", "data"),
+        prevent_initial_call=True,
+    )
+    def toggle_voice_assistant(n_open, n_close, is_open):
+        ctx = dash.callback_context
+        if not ctx.triggered:
+            return is_open, "voice-assistant-panel shadow-lg" if is_open else "voice-assistant-panel shadow-lg d-none"
+        trig_id = ctx.triggered[0]["prop_id"].split(".")[0]
+        if trig_id == "btn-close-assistant":
+            return False, "voice-assistant-panel shadow-lg d-none"
+        new_state = not is_open
+        return new_state, "voice-assistant-panel shadow-lg" if new_state else "voice-assistant-panel shadow-lg d-none"
+
+    @app.callback(
+        Output("assistant-jurisdiction-badge", "children"),
+        Input("global-location-store", "data"),
+    )
+    def sync_assistant_jurisdiction(loc_data):
+        loc = loc_data or {}
+        st = loc.get("state_name") or loc.get("state", "ALL")
+        dt = loc.get("district_name") or loc.get("district", "ALL")
+        pn = loc.get("panchayat_name") or loc.get("panchayat", "ALL")
+        if pn and pn != "ALL":
+            return f"{pn} GP, {dt}, {st}"
+        if dt and dt != "ALL":
+            return f"{dt} District, {st}"
+        if st and st != "ALL":
+            return f"{st} Statewide"
+        return "National Multi-State Scope"
+
+    @app.callback(
+        Output("assistant-chat-history", "children"),
+        Output("assistant-history-store", "data"),
+        Output("assistant-text-input", "value"),
+        Output("assistant-audio-player", "src"),
+        Output("assistant-audio-store", "data"),
+        Output("voice-assistant-panel", "className", allow_duplicate=True),
+        Output("assistant-open-store", "data", allow_duplicate=True),
+        Input("assistant-send-btn", "n_clicks"),
+        Input("chip-explain-budget", "n_clicks"),
+        Input("chip-explain-deficit", "n_clicks"),
+        Input("chip-explain-demo", "n_clicks"),
+        Input("chip-explain-gov", "n_clicks"),
+        Input("explain-this-trigger-store", "data"),
+        State("assistant-text-input", "value"),
+        State("assistant-lang-selector", "value"),
+        State("global-location-store", "data"),
+        State("assistant-history-store", "data"),
+        State("assistant-autoplay-store", "data"),
+        State("assistant-open-store", "data"),
+        prevent_initial_call=True,
+    )
+    def handle_assistant_interaction(
+        n_send, n_bgt, n_dfc, n_dem, n_gov, explain_trigger,
+        text_val, lang_sel, loc_data, history, autoplay, is_open
+    ):
+        ctx = dash.callback_context
+        if not ctx.triggered:
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+        trig_id = ctx.triggered[0]["prop_id"].split(".")[0]
+        user_query = ""
+        component_id = None
+
+        if trig_id == "chip-explain-budget":
+            user_query = "Explain why this development sector has been prioritized in the budget"
+        elif trig_id == "chip-explain-deficit":
+            user_query = "Show priority sector deficits and need index"
+        elif trig_id == "chip-explain-demo":
+            user_query = "Explain population demographics and vulnerability profile"
+        elif trig_id == "chip-explain-gov":
+            user_query = "Who is the sitting MLA and what is the local governance information?"
+        elif trig_id == "explain-this-trigger-store" and explain_trigger:
+            component_id = explain_trigger.get("component_id")
+            user_query = f"Explain dashboard module {component_id}"
+        elif trig_id == "assistant-send-btn" and text_val:
+            user_query = text_val.strip()
+
+        if not user_query and not component_id:
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+        loc = loc_data or {}
+        st = loc.get("state_name") or loc.get("state", "ALL")
+        dt = loc.get("district_name") or loc.get("district", "ALL")
+        pn = loc.get("panchayat_name") or loc.get("panchayat", "ALL")
+        yr = loc.get("financial_year") or loc.get("year", "2026-27")
+        lang = lang_sel or "en"
+
+        # Generate response from grounded voice assistant engine
+        try:
+            resp = voice_assistant_service.generate_response(
+                query=user_query,
+                lang=lang,
+                state=st,
+                district=dt,
+                panchayat=pn,
+                year=yr,
+                component_id=component_id,
+            )
+            answer_text = resp.get("response", "No response generated.")
+            audio_b64 = resp.get("audio_base64", "")
+        except Exception as e:
+            answer_text = f"An administrative query error occurred: {str(e)}"
+            audio_b64 = ""
+
+        # Update history
+        current_history = history or []
+        current_history.append({"sender": "user", "text": user_query})
+        current_history.append({"sender": "bot", "text": answer_text, "audio_b64": audio_b64})
+
+        # Render chat bubbles
+        bubbles = []
+        for msg in current_history:
+            if msg["sender"] == "user":
+                bubbles.append(
+                    html.Div(
+                        [
+                            html.Small("You", style={"fontWeight": "700", "opacity": "0.8", "fontSize": "0.7rem", "display": "block", "marginBottom": "2px"}),
+                            html.P(msg["text"], style={"margin": "0", "fontSize": "0.82rem"}),
+                        ],
+                        className="assistant-msg-bubble assistant-msg-user p-2 px-3 mb-2 shadow-sm text-end",
+                    )
+                )
+            else:
+                bubbles.append(
+                    html.Div(
+                        [
+                            html.Div(
+                                [
+                                    html.Span("🎙️ Smart AI Panchayat", style={"fontWeight": "700", "color": "#142D4E", "fontSize": "0.74rem"}),
+                                    html.Span(f" • {lang.upper()}", style={"fontSize": "0.68rem", "color": "#64748B"}),
+                                ],
+                                className="mb-1",
+                            ),
+                            dcc.Markdown(msg["text"], style={"margin": "0", "fontSize": "0.82rem", "lineHeight": "1.4"}),
+                        ],
+                        className="assistant-msg-bubble assistant-msg-bot p-2 px-3 mb-2 shadow-sm",
+                        style={"background": "#F1F5F9", "borderRadius": "12px", "borderLeft": "4px solid #245B91"},
+                    )
+                )
+
+        audio_src = f"data:audio/mp3;base64,{audio_b64}" if (audio_b64 and autoplay) else ""
+        panel_class = "voice-assistant-panel shadow-lg"
+
+        return bubbles, current_history, "", audio_src, audio_b64, panel_class, True
+
+
+    # ─── 16. Explain Chart Buttons to Assistant Trigger ─────────────────────
+    @app.callback(
+        Output("explain-this-trigger-store", "data"),
+        Input("btn-explain-chart-a", "n_clicks"),
+        Input("btn-explain-chart-b", "n_clicks"),
+        Input("btn-explain-chart-c", "n_clicks"),
+        Input("btn-explain-chart-d", "n_clicks"),
+        Input("btn-explain-chart-e", "n_clicks"),
+        Input("btn-explain-chart-f", "n_clicks"),
+        prevent_initial_call=True,
+    )
+    def trigger_explain_chart(ca, cb, cc, cd, ce, cf):
+        ctx = dash.callback_context
+        if not ctx.triggered:
+            return dash.no_update
+        trig = ctx.triggered[0]["prop_id"].split(".")[0]
+        chart_map = {
+            "btn-explain-chart-a": "chart_a_need_index",
+            "btn-explain-chart-b": "chart_b_budget_outlay",
+            "btn-explain-chart-c": "chart_c_demographics",
+            "btn-explain-chart-d": "chart_d_infrastructure",
+            "btn-explain-chart-e": "chart_e_priority_deficit",
+            "btn-explain-chart-f": "chart_f_multi_year_trajectory",
+        }
+        comp_id = chart_map.get(trig, "overview")
+        return {"component_id": comp_id, "timestamp": str(pd.Timestamp.now())}

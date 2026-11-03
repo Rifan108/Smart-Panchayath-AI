@@ -471,7 +471,7 @@ def create_comparison_content(engine, ward_a, ward_b, lang="en", state=None, dis
     active_wards = len(df)
 
     score_cols = [c for c in df.columns if c.startswith("score_")]
-    raw_labels = [c.replace("score_", "").replace("_", " ").title() for c in score_cols]
+    raw_labels = [c.replace("score_", "").replace("_and_", " & ").replace("_", " ").title() for c in score_cols]
     labels = [get_sector_name(s, lang) for s in raw_labels]
 
     vals_a = row_a[score_cols].values[0].tolist()
@@ -505,10 +505,19 @@ def create_comparison_content(engine, ward_a, ward_b, lang="en", state=None, dis
         ),
         template="plotly_white",
         paper_bgcolor="#FFFFFF",
-        height=450,
+        height=480,
         font=dict(family="Inter", color="#172B42", size=11),
-        legend=dict(orientation="h", yanchor="top", y=1.10, xanchor="center", x=0.5),
-        margin=dict(l=60, r=60, t=80, b=50),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.03,
+            xanchor="center",
+            x=0.5,
+            bgcolor="rgba(255, 255, 255, 0.9)",
+            bordercolor="#CBD5E1",
+            borderwidth=1,
+        ),
+        margin=dict(l=60, r=60, t=85, b=50),
     )
 
     # Grouped Bar Comparison in official light styling
@@ -533,14 +542,23 @@ def create_comparison_content(engine, ward_a, ward_b, lang="en", state=None, dis
         barmode="group",
         yaxis_title="Vulnerability Index (0 = Resilient, 1 = High Deficit)",
         yaxis=dict(range=[0, 1.15], gridcolor="#E2E8F0"),
-        xaxis=dict(gridcolor="rgba(0,0,0,0)", automargin=True, tickangle=-25),
+        xaxis=dict(gridcolor="rgba(0,0,0,0)", automargin=True, tickangle=-28),
         template="plotly_white",
         paper_bgcolor="#FFFFFF",
         plot_bgcolor="#FFFFFF",
         height=480,
         font=dict(family="Inter", color="#172B42", size=11),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
-        margin=dict(l=55, r=35, t=75, b=110),
+        legend=dict(
+            orientation="h",
+            yanchor="bottom",
+            y=1.03,
+            xanchor="center",
+            x=0.5,
+            bgcolor="rgba(255, 255, 255, 0.9)",
+            bordercolor="#CBD5E1",
+            borderwidth=1,
+        ),
+        margin=dict(l=55, r=35, t=85, b=110),
     )
 
     # Comparison table rows
@@ -636,8 +654,8 @@ def create_comparison_content(engine, ward_a, ward_b, lang="en", state=None, dis
 
         # Visualizations (Radar + Grouped Bar)
         dbc.Row([
-            dbc.Col(html.Div(dcc.Graph(figure=fig, style={"height": "450px", "width": "100%", "minHeight": "450px"}, config={"displayModeBar": False, "scrollZoom": False, "responsive": True}), className="govt-card p-3", style={"minHeight": "495px"}), md=6),
-            dbc.Col(html.Div(dcc.Graph(figure=bar_fig, style={"height": "450px", "width": "100%", "minHeight": "450px"}, config={"displayModeBar": False, "scrollZoom": False, "responsive": True}), className="govt-card p-3", style={"minHeight": "495px"}), md=6),
+            dbc.Col(html.Div(dcc.Graph(figure=fig, style={"height": "480px", "width": "100%", "minHeight": "480px"}, config={"displayModeBar": False, "scrollZoom": False, "responsive": True}), className="govt-card p-3", style={"minHeight": "525px"}), md=6),
+            dbc.Col(html.Div(dcc.Graph(figure=bar_fig, style={"height": "480px", "width": "100%", "minHeight": "480px"}, config={"displayModeBar": False, "scrollZoom": False, "responsive": True}), className="govt-card p-3", style={"minHeight": "525px"}), md=6),
         ], className="mb-4 g-3"),
 
         # Detailed Disparity Table

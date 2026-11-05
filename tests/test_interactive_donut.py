@@ -82,6 +82,7 @@ def test_gov_interactions_syntax_and_event_binding():
         code = f.read()
 
     assert "function handleDonutInteraction" in code
+    assert "window.handleDonutDirect" in code
     assert "function attachDonutListeners" in code
     assert "active-slice" in code
     assert "active-legend" in code
@@ -89,3 +90,30 @@ def test_gov_interactions_syntax_and_event_binding():
     assert "touchstart" in code
     assert "click" in code
     assert "data-index" in code
+
+
+def test_sector_short_names_multilingual():
+    """Verify that get_sector_short_name produces concise single-word / compact labels without orphan characters."""
+    from services.i18n import get_sector_short_name
+
+    sectors = [
+        "Economic Development",
+        "Agriculture & Food Security",
+        "Health & Sanitation",
+        "Education",
+        "Infrastructure",
+        "Social Welfare",
+        "Environment & Disaster Mgmt",
+        "Digital & E-Governance",
+        "Others",
+    ]
+
+    for sec in sectors:
+        for lang in ["en", "hi", "kn", "ml", "mr", "ta", "te"]:
+            short = get_sector_short_name(sec, lang=lang)
+            assert short, f"Short name missing for {sec} in {lang}"
+            # Check length is compact and doesn't contain orphan trailing dots or ellipses
+            assert not short.endswith("…"), f"Short name should not end with ellipsis: {short}"
+            assert not short.endswith("."), f"Short name should not end with dot: {short}"
+            assert len(short) <= 25, f"Short name too long for center circle: {short}"
+

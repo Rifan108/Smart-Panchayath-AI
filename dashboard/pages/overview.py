@@ -18,7 +18,7 @@ import pandas as pd
 import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from services.i18n import t, get_sector_name
+from services.i18n import t, get_sector_name, get_sector_short_name
 from data.panchayat_geography import STATES_PANCHAYAT_DATA
 from dashboard.layout import create_shared_location_breadcrumb
 from models.budget_allocator import compute_allocation
@@ -57,10 +57,12 @@ def create_mini_donut_svg(sectors_data=None, total_budget_cr=50.0, lang="en"):
 
     first_name, first_pct, first_amt, first_color = sectors_data[0]
     first_display = get_sector_name(first_name, lang)
+    first_short = get_sector_short_name(first_name, lang)
     first_amt_str = f"₹{first_amt:.1f} Cr" if first_amt >= 1.0 else f"₹{int(first_amt * 100)}L"
 
     for idx, (name, pct, amt_cr, color) in enumerate(sectors_data):
         display_name = get_sector_name(name, lang)
+        short_name = get_sector_short_name(name, lang)
         sweep = (pct / total_val) * 360.0
         if sweep >= 359.9:
             sweep = 359.9
@@ -82,12 +84,11 @@ def create_mini_donut_svg(sectors_data=None, total_budget_cr=50.0, lang="en"):
         amt_str = f"₹{amt_cr:.1f} Cr" if amt_cr >= 1.0 else f"₹{int(amt_cr * 100)}L"
         active_cls = "active-slice" if idx == 0 else ""
         paths_html.append(
-            f'<path class="donut-slice {active_cls}" data-index="{idx}" data-sector="{display_name}" data-val="{pct}%" data-color="{color}" data-amt="{amt_str}" data-desc="{display_name} ({amt_str})" fill="{color}" stroke="#FFFFFF" stroke-width="1.5" d="{path_d}"><title>{display_name}: {pct}% ({amt_str})</title></path>'
+            f'<path class="donut-slice {active_cls}" data-index="{idx}" data-sector="{display_name}" data-short="{short_name}" data-val="{pct}%" data-color="{color}" data-amt="{amt_str}" data-desc="{display_name} ({amt_str})" fill="{color}" stroke="#FFFFFF" stroke-width="1.5" d="{path_d}" onclick="window.handleDonutDirect && window.handleDonutDirect(this)"><title>{display_name}: {pct}% ({amt_str})</title></path>'
         )
         current_angle += sweep
 
     paths_str = "\n        ".join(paths_html)
-    short_display = (first_display[:11] + "…") if len(first_display) > 12 else first_display
     svg_html = f"""
 <div class="interactive-donut-wrapper" id="interactive-hero-donut" title="Tap any slice or legend item to inspect values">
     <div id="donut-hover-tooltip" class="donut-tooltip">📊 {first_display}: {first_pct}% ({first_amt_str})</div>
@@ -96,7 +97,7 @@ def create_mini_donut_svg(sectors_data=None, total_budget_cr=50.0, lang="en"):
     </svg>
     <div class="donut-center-overlay" id="donut-center-overlay">
         <span id="donut-center-val" class="donut-center-val" style="color: {first_color};">{first_pct}%</span>
-        <span id="donut-center-lbl" class="donut-center-lbl" title="{first_display}">{short_display}</span>
+        <span id="donut-center-lbl" class="donut-center-lbl" title="{first_display}">{first_short}</span>
         <span id="donut-center-sub" class="donut-center-sub" style="color: {first_color};">{first_amt_str}</span>
     </div>
 </div>
@@ -199,15 +200,16 @@ def create_overview_layout(engine, state=None, district=None, panchayat=None, ye
     donut_legend_elements = [
         html.Div(
             [
-                html.Span("●", style={"color": color, "marginRight": "4px"}),
-                get_sector_name(name, lang),
-                html.B(f"{pct}%", className="ms-auto"),
+                html.Span("●", style={"color": color, "marginRight": "6px", "fontSize": "0.75rem", "flexShrink": "0"}),
+                html.Span(get_sector_name(name, lang), className="donut-legend-label text-truncate flex-grow-1"),
+                html.B(f"{pct}%", className="ms-auto ps-2", style={"flexShrink": "0"}),
             ],
             className=f"donut-legend-item {'active-legend' if idx == 0 else ''}",
             title=f"Tap to inspect {get_sector_name(name, lang)} allocation",
             **{
                 "data-index": str(idx),
                 "data-sector": get_sector_name(name, lang),
+                "data-short": get_sector_short_name(name, lang),
                 "data-val": f"{pct}%",
                 "data-amt": f"₹{amt_cr:.1f} Cr" if amt_cr >= 1.0 else f"₹{int(amt_cr * 100)}L",
                 "data-color": color,
@@ -814,7 +816,13 @@ def create_overview_layout(engine, state=None, district=None, panchayat=None, ye
     ]
     infra_vals = []
     for c in col_map:
-        if c in df.columns and len(df) > 0:
+        raw_c = f"raw_{c}"
+        if raw_c in df.columns and len(df) > 0:
+            val = float(df[raw_c].mean())
+            if c == "road_connectivity_index" and val <= 1.0:
+                val = val * 100.0
+            infra_vals.append(round(val, 1))
+        elif c in df.columns and len(df) > 0:
             val = float(df[c].mean())
             if val <= 1.0:
                 val = val * 100.0

@@ -1725,3 +1725,50 @@ def get_sector_name(sector_en, lang="en"):
     if key:
         return t(key, lang)
     return str(sector_en).replace("_and_", " & ").replace("_", " ").title()
+
+
+def get_sector_short_name(sector_en, lang="en"):
+    """Get concise, single-word or compact localized sector name for center-of-donut and KPI badges."""
+    if not sector_en:
+        return ""
+    norm = str(sector_en).strip()
+    short_en_map = {
+        "Economic Development": "Economy",
+        "Economic": "Economy",
+        "Agriculture & Food Security": "Agriculture",
+        "Agriculture": "Agriculture",
+        "Health & Sanitation": "Health",
+        "Health": "Health",
+        "Education": "Education",
+        "Infrastructure": "Infra",
+        "Social Welfare": "Welfare",
+        "Welfare": "Welfare",
+        "Environment & Disaster Mgmt": "Environment",
+        "Environment": "Environment",
+        "Water & Disaster Mgmt": "Environment",
+        "Digital & E-Governance": "Digital",
+        "Digital": "Digital",
+        "Others": "Others",
+    }
+    short_key = short_en_map.get(norm)
+    if not short_key:
+        clean = norm.replace("score_", "").replace("_and_", " & ").replace("_", " ").title().strip()
+        short_key = short_en_map.get(clean, clean.split()[0] if clean else "Sector")
+
+    if not lang or lang == "en":
+        return short_key
+
+    localized_short = {
+        "Economy": {"ml": "സാമ്പത്തികം", "kn": "ಆರ್ಥಿಕ", "ta": "பொருளாதாரம்", "te": "ఆర్థికం", "mr": "अर्थव्यवस्था", "hi": "अर्थव्यवस्था"},
+        "Agriculture": {"ml": "കൃഷി", "kn": "ಕೃಷಿ", "ta": "விவசாயம்", "te": "వ్యవసాయం", "mr": "शेती", "hi": "कृषि"},
+        "Health": {"ml": "ആരോഗ്യം", "kn": "ಆರೋಗ್ಯ", "ta": "சுகாதாரம்", "te": "ఆరోగ్యం", "mr": "आरोग्य", "hi": "स्वास्थ्य"},
+        "Education": {"ml": "വിദ്യാഭ്യാസം", "kn": "ಶಿಕ್ಷಣ", "ta": "கல்வி", "te": "విద్య", "mr": "शिक्षण", "hi": "शिक्षा"},
+        "Infra": {"ml": "അടിസ്ഥാനം", "kn": "ಮೂಲಸೌಕರ್ಯ", "ta": "கட்டமைப்பு", "te": "మౌలికం", "mr": "पायाभूत", "hi": "बुनियादी"},
+        "Welfare": {"ml": "ക്ഷേമം", "kn": "ಕಲ್ಯಾಣ", "ta": "நலன்", "te": "సంక్షేమం", "mr": "कल्याण", "hi": "कल्याण"},
+        "Environment": {"ml": "പരിസ്ഥിതി", "kn": "ಪರಿಸರ", "ta": "சுற்றுச்சூழல்", "te": "పర్యావరణం", "mr": "पर्यावरण", "hi": "पर्यावरण"},
+        "Digital": {"ml": "ഡിജിറ്റൽ", "kn": "ಡಿಜಿಟಲ್", "ta": "டிஜிட்டல்", "te": "డిజిటల్", "mr": "डिजिटल", "hi": "डिजिटल"},
+        "Others": {"ml": "മറ്റുള്ളവ", "kn": "ಇತರೆ", "ta": "பிற", "te": "ఇతరాలు", "mr": "इतर", "hi": "अन्य"},
+    }
+    translations = localized_short.get(short_key, {})
+    return translations.get(lang, short_key)
+

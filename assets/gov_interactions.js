@@ -221,32 +221,18 @@ window.addEventListener("popstate", () => {
 });
 
 // ─── 5. Interactive Donut Chart Tap / Click / Hover Value Inspector ───
-function handleDonutInteraction(e) {
-    if (!e || !e.target) return;
-    const target = e.target;
+window.handleDonutDirect = function(activeEl) {
+    if (!activeEl) return;
 
-    // Check if target or any ancestor is a donut-slice or donut-legend-item
-    let slice = target.closest ? target.closest(".donut-slice") : null;
-    let legend = target.closest ? target.closest(".donut-legend-item") : null;
-
-    // Mobile touch point fallback
-    if (!slice && !legend && e.touches && e.touches.length > 0) {
-        try {
-            const el = document.elementFromPoint(e.touches[0].clientX, e.touches[0].clientY);
-            if (el && el.closest) {
-                slice = el.closest(".donut-slice");
-                legend = el.closest(".donut-legend-item");
-            }
-        } catch (_) {}
+    let slice = activeEl.closest ? activeEl.closest(".donut-slice") : null;
+    let legend = activeEl.closest ? activeEl.closest(".donut-legend-item") : null;
+    if (!slice && !legend) {
+        if (activeEl.classList && activeEl.classList.contains("donut-slice")) slice = activeEl;
+        if (activeEl.classList && activeEl.classList.contains("donut-legend-item")) legend = activeEl;
     }
+    const el = slice || legend || activeEl;
 
-    if (!slice && !legend) return;
-
-    // Determine target index and data
-    const activeEl = slice || legend;
-    let idx = activeEl.getAttribute("data-index");
-
-    // If data-index attribute is missing, determine index by DOM position
+    let idx = el.getAttribute("data-index");
     if (idx === null || idx === undefined || idx === "") {
         if (slice) {
             const allSlices = Array.from(document.querySelectorAll(".donut-slice"));
@@ -257,32 +243,34 @@ function handleDonutInteraction(e) {
         }
     }
 
-    // Resolve matching slice and legend elements
     const targetSlice = slice || (idx !== null ? document.querySelector('.donut-slice[data-index="' + idx + '"]') : null);
     const targetLegend = legend || (idx !== null ? document.querySelector('.donut-legend-item[data-index="' + idx + '"]') : null);
 
-    // Extract values with safe fallbacks
-    const sector = activeEl.getAttribute("data-sector") || 
+    const sector = el.getAttribute("data-sector") || 
                    (targetSlice && targetSlice.getAttribute("data-sector")) || 
                    (targetLegend && targetLegend.getAttribute("data-sector")) || "Sector";
 
-    const val = activeEl.getAttribute("data-val") || 
+    const shortName = el.getAttribute("data-short") || 
+                      (targetSlice && targetSlice.getAttribute("data-short")) || 
+                      (targetLegend && targetLegend.getAttribute("data-short")) || 
+                      (sector.length > 11 ? sector.split(" ")[0] : sector);
+
+    const val = el.getAttribute("data-val") || 
                 (targetSlice && targetSlice.getAttribute("data-val")) || 
                 (targetLegend && targetLegend.getAttribute("data-val")) || "0%";
 
-    const color = activeEl.getAttribute("data-color") || 
+    const color = el.getAttribute("data-color") || 
                   (targetSlice && targetSlice.getAttribute("data-color")) || 
                   (targetLegend && targetLegend.getAttribute("data-color")) || "#142D4E";
 
-    const amt = activeEl.getAttribute("data-amt") || 
+    const amt = el.getAttribute("data-amt") || 
                 (targetSlice && targetSlice.getAttribute("data-amt")) || 
                 (targetLegend && targetLegend.getAttribute("data-amt")) || "";
 
-    const desc = activeEl.getAttribute("data-desc") || 
+    const desc = el.getAttribute("data-desc") || 
                  (targetSlice && targetSlice.getAttribute("data-desc")) || 
                  (targetLegend && targetLegend.getAttribute("data-desc")) || "";
 
-    // Update Center Overlay Elements
     const centerVal = document.getElementById("donut-center-val");
     const centerLbl = document.getElementById("donut-center-lbl");
     const centerSub = document.getElementById("donut-center-sub");
@@ -293,12 +281,12 @@ function handleDonutInteraction(e) {
         centerVal.style.color = color;
         centerVal.setAttribute("fill", color);
         centerVal.classList.remove("donut-pop");
-        void centerVal.offsetWidth; // Trigger reflow for animation restart
+        void centerVal.offsetWidth;
         centerVal.classList.add("donut-pop");
     }
 
     if (centerLbl) {
-        centerLbl.textContent = sector.length > 12 ? sector.slice(0, 11) + "…" : sector;
+        centerLbl.textContent = shortName;
         centerLbl.title = sector;
     }
 
@@ -339,6 +327,34 @@ function handleDonutInteraction(e) {
         const legends = document.querySelectorAll(".donut-legend-item");
         if (legends[idx]) legends[idx].classList.add("active-legend");
     }
+};
+
+function handleDonutInteraction(e) {
+    if (!e || !e.target) return;
+    let target = e.target;
+    if (!target && e.currentTarget) target = e.currentTarget;
+    if (target.nodeType === 3) target = target.parentElement;
+    if (!target) return;
+
+    let slice = target.closest ? target.closest(".donut-slice") : null;
+    let legend = target.closest ? target.closest(".donut-legend-item") : null;
+
+    // Mobile touch point fallback
+    if (!slice && !legend) {
+        const touch = (e.touches && e.touches[0]) || (e.changedTouches && e.changedTouches[0]);
+        if (touch) {
+            try {
+                const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                if (el) {
+                    slice = el.closest ? el.closest(".donut-slice") : null;
+                    legend = el.closest ? el.closest(".donut-legend-item") : null;
+                }
+            } catch (_) {}
+        }
+    }
+
+    if (!slice && !legend) return;
+    window.handleDonutDirect(slice || legend);
 }
 
 function attachDonutListeners() {

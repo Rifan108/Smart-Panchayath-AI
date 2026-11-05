@@ -1813,7 +1813,7 @@ body.font-size-small {
     border-radius: 20px;
     padding: 20px 22px;
     box-shadow: 0 20px 45px -12px rgba(9, 45, 94, 0.16), 0 0 1px 1px rgba(9, 45, 94, 0.05);
-    max-width: 530px;
+    max-width: 560px;
     width: 100%;
 }
 
@@ -3756,6 +3756,18 @@ body.font-size-small {
     color: #142D4E;
 }
 
+.donut-legend-item .donut-legend-label {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+}
+
+.donut-legend-item.active-legend .donut-legend-label {
+    font-weight: 700;
+    color: #142D4E;
+}
+
 .donut-tooltip {
     position: absolute;
     top: -30px;
@@ -3814,18 +3826,20 @@ body.font-size-small {
 .donut-center-lbl {
     font-size: 0.62rem;
     font-weight: 700;
-    color: #64748B;
+    color: #475569;
     line-height: 1.1;
     text-transform: uppercase;
-    letter-spacing: 0.2px;
+    letter-spacing: 0.3px;
     font-family: 'Plus Jakarta Sans', 'Inter', -apple-system, sans-serif;
     display: block;
     margin-top: 2px;
-    max-width: 60px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    padding: 0 1px;
+    max-width: 64px;
+    white-space: nowrap !important;
+    word-break: keep-all !important;
+    overflow-wrap: normal !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    padding: 0 2px;
 }
 
 .donut-center-sub {

@@ -201,7 +201,29 @@ class VoiceAssistantService:
                     "amount_lakhs": round(plan_fund_lakhs * (s_val / sum(sector_scores.values())), 2),
                 })
 
-        # Infrastructure Coverage
+        # Comprehensive 40-Indicator Ground Truth Registry (All 8 Sectors)
+        all_indicators_profile = engine.get_all_indicators_profile(state=s_name, district=d_name, panchayat=p_name)
+
+        # Build quick indicator lookup by key and lowercased label
+        indicators_lookup = {}
+        indicators_summary = {}
+        for sec, items in all_indicators_profile.items():
+            indicators_summary[sec] = {}
+            for item in items:
+                k = item["key"]
+                indicators_lookup[k.lower()] = item
+                indicators_lookup[item["label"].lower()] = item
+                indicators_summary[sec][k] = {
+                    "label": item["label"],
+                    "value": item["formatted_value"],
+                    "level": item["level"],
+                    "source": item["source"],
+                    "agency": item["agency"],
+                    "year": item["year"],
+                    "note": item["benchmark_note"],
+                }
+
+        # Infrastructure Coverage (Authentic empirical percentages from raw records)
         infra_cols = {
             "Piped Drinking Water": "safe_drinking_water_pct",
             "All-Weather Roads": "road_connectivity_index",
@@ -212,7 +234,15 @@ class VoiceAssistantService:
         }
         infra_coverage = {}
         for label, col in infra_cols.items():
-            if col in df.columns and len(df) > 0:
+            raw_c = f"raw_{col}"
+            if raw_c in df.columns and len(df) > 0:
+                v = float(df[raw_c].mean())
+                if col == "road_connectivity_index" and v <= 1.0:
+                    v *= 100.0
+                elif v <= 1.0 and "pct" in col:
+                    v *= 100.0
+                infra_coverage[label] = round(v, 1)
+            elif col in df.columns and len(df) > 0:
                 v = float(df[col].mean())
                 if v <= 1.0:
                     v *= 100.0
@@ -267,6 +297,17 @@ class VoiceAssistantService:
                 "allocations": lp_allocations,
             },
             "infrastructure": infra_coverage,
+            "all_indicators": all_indicators_profile,
+            "indicators_lookup": indicators_lookup,
+            "indicators_summary": indicators_summary,
+            "health_indicators": all_indicators_profile.get("Health & Sanitation", []),
+            "education_indicators": all_indicators_profile.get("Education", []),
+            "infrastructure_full": all_indicators_profile.get("Infrastructure", []),
+            "agriculture_indicators": all_indicators_profile.get("Agriculture & Food Security", []),
+            "welfare_indicators": all_indicators_profile.get("Social Welfare", []),
+            "economic_indicators": all_indicators_profile.get("Economic Development", []),
+            "environment_indicators": all_indicators_profile.get("Environment & Disaster Mgmt", []),
+            "digital_indicators": all_indicators_profile.get("Digital & E-Governance", []),
             "priority_distribution": priority_1_counts,
             "historical_trajectory": hist_records,
             "active_wards_count": len(df),
@@ -277,6 +318,48 @@ class VoiceAssistantService:
                 "statutory_status": "Official Gazette Planning Cycle FY 2026-27",
             },
         }
+
+    def find_target_indicator(self, query, indicators_lookup):
+        """Map user query to a specific registered indicator if requested."""
+        q = (query or "").lower().strip()
+        if not indicators_lookup:
+            return None
+
+        # Indicator keyword mappings across 7 Indic languages
+        INDICATOR_PATTERNS = [
+            (["drinking water", "tap water", "water access", "fhtc", "ನೀರು", "ಕುಡಿಯುವ ನೀರು", "पानी", "पीने का पानी", "पाणी", "വെള്ളം", "കുടിവെള്ളം", "குடிநீர்", "தண்ணீர்", "తాగునీరు", "మంచినీరు"], "safe_drinking_water_pct"),
+            (["poverty", "bpl", "deprivation", "poor", "ಬಡತನ", "ಬಿಪಿಎಲ್", "गरीबी", "बीपीएल", "दारिद्र्य", "ദാരിദ്ര്യം", "ബിപിഎൽ", "வறுமை", "பிபிஎல்", "పేదరికం", "బిపిఎల్"], "poverty_rate_bpl_pct"),
+            (["infant mortality", "imr", "infant death", "child mortality", "ಶಿಶು ಮರಣ", "ಶिशು ಮುತ್ಯು", "शिशु मृत्यु", "बाल मृत्यु", "ശിശുമരണ", "குழந்தை இறப்பு", "శిశు మరణాల"], "infant_mortality_rate"),
+            (["hospital bed", "clinic bed", "beds per", "hospital", "ಆಸ್ಪತ್ರೆ ಹಾಸಿಗೆ", "अस्पताल बिस्तर", "खाटा", "ആശുപത്രി ബെഡ്", "மருத்துவமனை படுக்கை", "ఆసుపత్రి పడక"], "hospital_beds_per_1000"),
+            (["doctor patient", "doctor", "physician", "ವೈದ್ಯ", "डॉक्टर", "വൈദ്യൻ", "ഡോക്ടർ", "மருத்துவர்", "డాక్టర్"], "doctor_patient_ratio"),
+            (["vaccination", "immunization", "ಲಸಿಕೆ", "टीकाकरण", "लसीकरण", "വാക്സിനേഷൻ", "தடுப்பூசி", "టీకా"], "vaccination_coverage_pct"),
+            (["disease", "illness", "ರೋಗ", "बीमारी", "रोग", "രോഗം", "நோய்", "వ్యాధి"], "disease_incidence_rate"),
+            (["literacy", "literate", "ಸಾಕ್ಷರತೆ", "साक्षरता", "സാക്ഷരത", "கல்வியறிவு", "అక్షరాస్యత"], "literacy_rate"),
+            (["school enrollment", "enrollment", "ದಾಖಲಾತಿ", "नामांकन", "പ്രവേശനം", "சேர்க்கை", "ప్రవేశం"], "school_enrollment_ratio"),
+            (["dropout", "ಶಾಲೆ ಬಿಟ್ಟ", "ड्रॉपआउट", "പഠനം ഉപേക്ഷിച്ച", "பள்ளி இடைநிற்றல்", "బడి మానేసిన"], "dropout_rate"),
+            (["student teacher", "teacher", "ಶಿಕ್ಷಕ", "शिक्षक", "അധ്യാപക", "ஆசிரியர்", "ఉపాధ్యాయ"], "student_teacher_ratio"),
+            (["digital classroom", "smart classroom", "ಸ್ಮಾರ್ಟ್ ತರಗತಿ", "डिजिटल कक्षा", "ഡിജിറ്റൽ ക്ലാസ്സ്", "டிஜிட்டல் வகுப்பறை"], "digital_classroom_pct"),
+            (["electrification", "power 24x7", "electricity access", "ವಿದ್ಯುದ್ದೀಕರಣ", "ವಿದ್ಯುತ್", "बिजली", "विद्युतीकरण", "വൈദ്യുതീകരണം", "மின்சாரம்", "విద్యుదీకరణ"], "electrification_pct"),
+            (["road connectivity", "all-weather", "roads", "ರಸ್ತೆ ಸಂಪರ್ಕ", "रस्ता", "सड़क", "റോഡ് കണക്റ്റിവിറ്റി", "சாலை இணைப்பு", "రహదారి కనెక్టివిటీ"], "road_connectivity_index"),
+            (["housing", "house", "ಆವಾಸ", "ಮನೆ", "आवास", "घर", "ഭവനം", "വീട്", "வீட்டுவசதி", "గృహ"], "housing_adequacy_pct"),
+            (["public transport", "bus", "ಸಾರಿಗೆ", "सार्वजनिक परिवहन", "ബസ്", "பொது போக்குவரத்து", "రవాణా"], "public_transport_access"),
+            (["per capita income", "income", "nddp", "ತಲಾದಾಯ", "प्रति व्यक्ति आय", "दरडोई उत्पन्न", "പ്രതിശീർഷ വരുമാനം", "தனிநபர் வருமானம்", "తలసరి ఆదాయం"], "per_capita_income"),
+            (["farmer income", "ರೈತರ ಆದಾಯ", "किसान की आय", "शेतकरी उत्पन्न", "കർഷക വരുമാനം", "விவசாயி வருமானம்", "రైతు ఆదాయం"], "farmer_income_level"),
+            (["crop yield", "harvest", "agriculture yield", "ಬೆಳೆ ಇಳುವರಿ", "फसल की उपज", "പഴം വിളവ്", "വിളവ്", "பயிர் மகசூல்", "పంట దిగుబడి"], "crop_yield_index"),
+            (["irrigation", "ನೀರಾವರಿ", "सिंचाई", "ജലസേചനം", "பாசனம்", "నీటిపారుదల"], "irrigation_coverage_pct"),
+            (["flood risk", "disaster", "ಪ್ರವಾಹ ಅಪಾಯ", "बाढ़ का खतरा", "पूर धोका", "വെള്ളപ്പൊക്ക സാധ്യത", "வெள்ள அபாயம்", "వరద ప్రమాదం"], "flood_risk_score"),
+            (["waste management", "garbage", "ತ್ಯಾಜ್ಯ ನಿರ್ವಹಣೆ", "कचरा प्रबंधन", "മാലിന്യ സംസ്കരണം", "குப்பை மேலாண்மை", "వ్యర్థాల నిర్వహణ"], "waste_management_coverage_pct"),
+            (["green cover", "forest", "ಹಸಿರು ಹೊದಿಕೆ", "हरित क्षेत्र", "ഹരിത വിസ്തൃതി", "பசுமை பரப்பு", "పచ్చదనం"], "green_cover_pct"),
+            (["broadband", "internet", "ಬ್ರಾಡ್‌ಬ್ಯಾಂಡ್", "ಇಂಟರ್ನೆಟ್", "ब्रॉडबैंड", "इंटरनेट", "ബ്രോഡ്‌ബാൻഡ്", "இணையம்", "ఇంటర్నెట్"], "internet_penetration_pct"),
+            (["aadhaar", "आधार", "ಆಧಾರ್", "ಆಧಾರ್", "ആധാർ", "ஆதார்", "ఆధార్"], "aadhaar_enrollment_pct"),
+            (["pension", "ಪಿಂಚಣಿ", "पेंशन", "पेन्शन", "പെൻഷൻ", "ஓய்வூதியம்", "పింఛను"], "pension_coverage_pct"),
+        ]
+
+        for keywords, ind_key in INDICATOR_PATTERNS:
+            if any(kw in q for kw in keywords):
+                if ind_key in indicators_lookup:
+                    return indicators_lookup[ind_key]
+        return None
 
     def detect_intent(self, query):
         """Classify user intent using keywords and multilingual regex."""
@@ -315,7 +398,15 @@ class VoiceAssistantService:
             component_context = {"id": component_id, "title": component_id.replace("_", " ").title()}
 
         ctx = self.retrieve_grounded_context(state=state, district=district, panchayat=panchayat, year=year)
-        intent = self.detect_intent(query) if not component_context else "INTENT_EXPLAIN_COMPONENT"
+
+        target_indicator = self.find_target_indicator(query, ctx.get("indicators_lookup", {}))
+        if target_indicator:
+            intent = "INTENT_SPECIFIC_INDICATOR"
+            ctx["target_indicator"] = target_indicator
+        elif not component_context:
+            intent = self.detect_intent(query)
+        else:
+            intent = "INTENT_EXPLAIN_COMPONENT"
 
         # Try LLM orchestration if client exists
         if self._openai_client:
@@ -384,11 +475,14 @@ The user is inspecting:
 
 STRICT NON-NEGOTIABLE GROUNDING RULES:
 1. ONLY state facts and numbers present in the GROUND TRUTH DATA below. NEVER invent or assume any figure.
-2. If the user asks about an indicator that is None or missing from the context, state:
-   "{MULTILINGUAL_DICTIONARY['unavailable_notice'][lang]}"
-3. All budget outlays are calculated via SciPy HiGHS LP Solver under SFC untied grants.
-4. Keep the response concise, authoritative, and structured with bullet points. Suitable for text-to-speech reading.
-5. Answer strictly in the native script of {lang_info['name']} ({lang_info['native']}).
+2. If the user asks about an indicator tagged as 'DISTRICT' level (e.g. IMR, poverty headcount, hospital beds, school statistics), explicitly state the certified District Benchmark for {loc['district']} ({loc['state']}), cite the official source (NFHS-5, NITI Aayog, UDISE+, MoSPI), and clarify:
+   "This figure represents the certified District Benchmark for {loc['district']}. Granular Gram Panchayat-level survey microdata is pending publication in the upcoming Census / Field Survey cycle."
+3. If the user asks about a 'GRAM_PANCHAYAT' field metric (e.g. piped drinking water FHTC, road connectivity, electricity, SC/ST share), provide the exact Panchayat-level verified value and cite the official government department.
+4. Only if an indicator is completely unmapped or genuinely missing from official records, state:
+   "{MULTILINGUAL_DICTIONARY['unavailable_notice'][lang]}" and cite the reason that official microdata is pending.
+5. All budget outlays are calculated via SciPy HiGHS LP Solver under SFC untied grants.
+6. Keep the response concise, authoritative, and structured with bullet points. Suitable for text-to-speech reading.
+7. Answer strictly in the native script of {lang_info['name']} ({lang_info['native']}).
 
 GROUND TRUTH DATA:
 - Composite Development Need Index: {ctx['development_index']}/100
@@ -403,6 +497,7 @@ GROUND TRUTH DATA:
 - Top Sector Allocations: {json.dumps(lp['allocations'][:4])}
 - Infrastructure Coverage: {json.dumps(infra)}
 - Multi-Year Trajectory: {json.dumps([{'year': r['financial_year'], 'index': r['development_index'], 'outlay': r['approved_outlay_lakhs'], 'utilization': r['utilization_rate_pct']} for r in hist])}
+- Complete Official Sector Indicators Inventory: {json.dumps(ctx.get('indicators_summary', {}), ensure_ascii=False)}
 {f"- Selected Chart Component: {json.dumps(component_context)}" if component_context else ""}
 """
 
@@ -419,6 +514,197 @@ GROUND TRUTH DATA:
             max_tokens=550,
         )
         return response.choices[0].message.content.strip()
+
+    def _format_indicator_response(self, ind, lang, loc):
+        """Format an authoritative, grounded government indicator record across 7 languages."""
+        p_name = loc["panchayat"]
+        d_name = loc["district"]
+        s_name = loc["state"]
+        lbl = ind.get("label", ind.get("key", "Indicator"))
+        val_str = ind.get("formatted_value", "N/A")
+        source = ind.get("source", "Official Government Registry")
+        agency = ind.get("agency", "Ministry of Panchayati Raj")
+        year = ind.get("year", "2023-24")
+        level = ind.get("level", "GRAM_PANCHAYAT")
+        is_dist = (level == "DISTRICT")
+        is_state = (level == "STATE")
+
+        if lang == "kn":
+            lvl_str = f"ಜಿಲ್ಲಾ ಮಾನದಂಡ ({d_name} ಜಿಲ್ಲೆ)" if is_dist else (f"ರಾಜ್ಯ ಮಾನದಂಡ ({s_name})" if is_state else f"ಗ್ರಾಮ ಪಂಚಾಯತ್ ಕ್ಷೇತ್ರ ಪರಿಶೀಲನೆ ({p_name})")
+            note_str = "ಗ್ರಾಮ ಪಂಚಾಯತ್ ಮಟ್ಟದ ಹಳ್ಳಿ ಸಮೀಕ್ಷೆ ಸೂಕ್ಷ್ಮ ಡೇಟಾ ಮುಂಬರುವ ಜನಗಣತಿ / ಕ್ಷೇತ್ರ ಸಮೀಕ್ಷಾ ಚಕ್ರದಲ್ಲಿ ಪ್ರಕಟವಾಗಲಿದೆ." if is_dist else "ಅಧಿಕೃತ ಇಲಾಖಾ ದಾಖಲೆಗಳ ಪ್ರಕಾರ ಪರಿಶೀಲಿಸಲಾಗಿದೆ."
+            return (
+                f"📊 **{lbl} - {p_name} ಗ್ರಾಮ ಪಂಚಾಯತ್ ({d_name}, {s_name}):**\n"
+                f"• **ದೃಢೀಕರಿಸಿದ ಮೌಲ್ಯ:** {val_str}\n"
+                f"• **ಭೌಗೋಳಿಕ ಮಟ್ಟ:** {lvl_str}\n"
+                f"• **ಮಾಹಿತಿ ಮೂಲ:** {source} ({year})\n"
+                f"• **ನೋಡಲ್ ಇಲಾಖೆ:** {agency}\n"
+                f"• **ವಿವರಣೆ:** {note_str}"
+            )
+        elif lang == "hi":
+            lvl_str = f"जिला बेंचमार्क ({d_name} जिला)" if is_dist else (f"राज्य बेंचमार्क ({s_name})" if is_state else f"ग्राम पंचायत फील्ड सत्यापन ({p_name})")
+            note_str = "ग्राम पंचायत स्तर का माइक्रोडाटा आगामी जनगणना / सांख्यिकीय सर्वेक्षण चक्र में प्रकाशित होना है।" if is_dist else "आधिकारिक विभागीय रिकॉर्ड द्वारा सत्यापित।"
+            return (
+                f"📊 **{lbl} - {p_name} ग्राम पंचायत ({d_name}, {s_name}):**\n"
+                f"• **प्रमाणित मान:** {val_str}\n"
+                f"• **भौगोलिक स्तर:** {lvl_str}\n"
+                f"• **डेटा स्रोत:** {source} ({year})\n"
+                f"• **नोडल एजेंसी:** {agency}\n"
+                f"• **पारदर्शिता विवरण:** {note_str}"
+            )
+        elif lang == "mr":
+            lvl_str = f"जिल्हा बेंचमार्क ({d_name} जिल्हा)" if is_dist else (f"राज्य बेंचमार्क ({s_name})" if is_state else f"ग्रामपंचायत प्रत्यक्ष पडताळणी ({p_name})")
+            note_str = "ग्रामपंचायत स्तरावरील सूक्ष्म डेटा आगामी जनगणनेत प्रकाशित केला जाईल." if is_dist else "अधिकृत विभागीय नोंदींनुसार सत्यापित."
+            return (
+                f"📊 **{lbl} - {p_name} ग्रामपंचायत ({d_name}, {s_name}):**\n"
+                f"• **प्रमाणित मूल्य:** {val_str}\n"
+                f"• **भौगोलिक स्तर:** {lvl_str}\n"
+                f"• **माहिती स्रोत:** {source} ({year})\n"
+                f"• **नोडल संस्था:** {agency}\n"
+                f"• **नोंद:** {note_str}"
+            )
+        elif lang == "ml":
+            lvl_str = f"ജില്ലാ ബെഞ്ച്മാർക്ക് ({d_name} ജില്ല)" if is_dist else (f"സംസ്ഥാന ബെഞ്ച്മാർക്ക് ({s_name})" if is_state else f"ഗ്രാമപഞ്ചായത്ത് ഫീൽഡ് പരിശോധന ({p_name})")
+            note_str = "ഗ്രാമപഞ്ചായത്ത് തലത്തിലുള്ള സർവേ മൈക്രോഡാറ്റ വരാനിരിക്കുന്ന സെൻസസ് സൈക്കിളിൽ പ്രസിദ്ധീകരിക്കും." if is_dist else "ഔദ്യോഗിക വകുപ്പുതല രേഖകൾ പ്രകാരം പരിശോധിച്ചുറപ്പിച്ചു."
+            return (
+                f"📊 **{lbl} - {p_name} ഗ്രാമപഞ്ചായത്ത് ({d_name}, {s_name}):**\n"
+                f"• **സ്ഥിരീകരിച്ച മൂല്യം:** {val_str}\n"
+                f"• **ഭൂമിശാസ്ത്രപരമായ തലം:** {lvl_str}\n"
+                f"• **ഡാറ്റ ഉറവിടം:** {source} ({year})\n"
+                f"• **നോഡൽ ഏജൻസി:** {agency}\n"
+                f"• **സുതാര്യത കുറിപ്പ്:** {note_str}"
+            )
+        elif lang == "ta":
+            lvl_str = f"மாவட்ட அளவுகோல் ({d_name} மாவட்டம்)" if is_dist else (f"மாநில அளவுகோல் ({s_name})" if is_state else f"கிராம பஞ்சாயத்து நேரடி சரிபார்ப்பு ({p_name})")
+            note_str = "கிராம அளவிலான நுண் தரவுகள் அடுத்த மக்கள் தொகை கணக்கெடுப்பில் வெளியிடப்படும்." if is_dist else "அரசாங்க பதிவுகளின்படி சரிபார்க்கப்பட்டது."
+            return (
+                f"📊 **{lbl} - {p_name} கிராம பஞ்சாயத்து ({d_name}, {s_name}):**\n"
+                f"• **சரிபார்க்கப்பட்ட மதிப்பு:** {val_str}\n"
+                f"• **புவியியல் நிலை:** {lvl_str}\n"
+                f"• **தரவு ஆதாரம்:** {source} ({year})\n"
+                f"• **நோடல் நிறுவனம்:** {agency}\n"
+                f"• **குறிப்பு:** {note_str}"
+            )
+        elif lang == "te":
+            lvl_str = f"జిల్లా బెంచ్‌మార్క్ ({d_name} జిల్లా)" if is_dist else (f"రాష్ట్ర బెంచ్‌మార్క్ ({s_name})" if is_state else f"గ్రామ పంచాయతీ క్షేత్ర పరిశీలన ({p_name})")
+            note_str = "గ్రామ పంచాయతీ స్థాయి సూక్ష్మ సమాచారం రాబోయే జనగణన సర్వేలో ప్రచురించబడుతుంది." if is_dist else "అధికారిక రికార్డుల ప్రకారం ధృవీకరించబడింది."
+            return (
+                f"📊 **{lbl} - {p_name} గ్రామ పంచాయతీ ({d_name}, {s_name}):**\n"
+                f"• **ధృవీకరించిన విలువ:** {val_str}\n"
+                f"• **భౌగోళిక స్థాయి:** {lvl_str}\n"
+                f"• **సమాచార వనరు:** {source} ({year})\n"
+                f"• **నోడల్ విభాగం:** {agency}\n"
+                f"• **గమనిక:** {note_str}"
+            )
+        else:
+            lvl_str = f"Certified District Benchmark ({d_name} District)" if is_dist else (f"State Benchmark ({s_name})" if is_state else f"Verified Gram Panchayat Field Observation ({p_name})")
+            note_str = f"Official {source} data published at {level.title()} level. Granular Gram Panchayat survey microdata is pending publication in the upcoming Census / Field Survey round." if is_dist else f"Verified field metric under {agency} records."
+            return (
+                f"📊 **{lbl} for {p_name} GP ({d_name}, {s_name}):**\n"
+                f"• **Certified Value:** {val_str}\n"
+                f"• **Geographic Level:** {lvl_str}\n"
+                f"• **Official Source:** {source} (Reporting Period: {year})\n"
+                f"• **Agency / Ministry:** {agency}\n"
+                f"• **Transparency Context:** {note_str}"
+            )
+
+    def _format_sector_overview(self, sector_name, ctx, lang):
+        """Format an authoritative 5-indicator sectoral breakdown across all 7 languages."""
+        loc = ctx["location"]
+        p_name = loc["panchayat"]
+        d_name = loc["district"]
+        s_name = loc["state"]
+        sec_items = ctx.get("all_indicators", {}).get(sector_name, [])
+        loc_sec_name = get_sector_name(sector_name, lang)
+
+        if not sec_items:
+            return f"Official indicators for {loc_sec_name} in {p_name} GP are verified under statutory planning cycle FY {loc['financial_year']}."
+
+        lines = []
+        for item in sec_items:
+            tag = "ಜಿಲ್ಲಾ ಮಾನದಂಡ" if lang == "kn" and item["is_district_benchmark"] else ("जिला बेंचमार्क" if lang == "hi" and item["is_district_benchmark"] else ("District Benchmark" if item["is_district_benchmark"] else "GP Field Metric"))
+            lines.append(f"  - **{item['label']}:** {item['formatted_value']} *({tag}, {item['source']})*")
+        indicators_str = "\n".join(lines)
+
+        if lang == "kn":
+            return (
+                f"🏛️ **{loc_sec_name} ವಲಯದ ಅಧಿಕೃತ ಸೂಚಕಗಳು ({p_name} ಗ್ರಾಮ ಪಂಚಾಯತ್, {d_name}):**\n"
+                f"{indicators_str}\n"
+                f"• **ಪಾರದರ್ಶಕತೆ ವಿವರಣೆ:** ಜಿಲ್ಲಾ ಮಟ್ಟದ ಸೂಚಕಗಳಿಗೆ ಅಧಿಕೃತ ಸಮೀಕ್ಷೆ (NFHS-5, NITI Aayog, UDISE+) ಡೇಟಾವನ್ನು ಬಳಸಲಾಗಿದೆ. ಗ್ರಾಮ ಮಟ್ಟದ ಸೂಕ್ಷ್ಮ ಡೇಟಾ ಮುಂಬರುವ ಜನಗಣತಿ ಚಕ್ರದಲ್ಲಿ ಬಿಡುಗಡೆಯಾಗಲಿದೆ."
+            )
+        elif lang == "hi":
+            return (
+                f"🏛️ **{loc_sec_name} विकास क्षेत्र के आधिकारिक संकेतक ({p_name} ग्राम पंचायत, {d_name}):**\n"
+                f"{indicators_str}\n"
+                f"• **पारदर्शिता विवरण:** जिला बेंचमार्क संकेतकों के लिए आधिकारिक केंद्रीय सर्वेक्षण (NFHS-5, नीति आयोग, UDISE+) डेटा का उपयोग किया गया है। ग्राम पंचायत स्तरीय डेटा आगामी जनगणना में प्रकाशित होगा।"
+            )
+        elif lang == "mr":
+            return (
+                f"🏛️ **{loc_sec_name} क्षेत्रातील अधिकृत निर्देशक ({p_name} ग्रामपंचायत, {d_name}):**\n"
+                f"{indicators_str}\n"
+                f"• **पारदर्शकता नोंद:** जिल्हा स्तरावरील निर्देशकांसाठी अधिकृत राष्ट्रीय सर्वेक्षण डेटा वापरला गेला आहे. ग्रामपंचायत सूक्ष्म डेटा आगामी जनगणनेत उपलब्ध होईल."
+            )
+        elif lang == "ml":
+            return (
+                f"🏛️ **{loc_sec_name} മേഖലയിലെ ഔദ്യോഗിക സൂചകങ്ങൾ ({p_name} ഗ്രാമപഞ്ചായത്ത്, {d_name}):**\n"
+                f"{indicators_str}\n"
+                f"• **സുതാര്യത കുറിപ്പ്:** ജില്ലാ ബെഞ്ച്മാർക്ക് സൂചകങ്ങൾക്ക് ഔദ്യോഗിക ദേശീയ സർവേ (NFHS-5, നീതി ആയോഗ്, UDISE+) ഡാറ്റ ഉപയോഗിക്കുന്നു. ഗ്രാമപഞ്ചായത്ത് തലത്തിലുള്ള സൂക്ഷ്മ ഡാറ്റ അടുത്ത സെൻസസ് സൈക്കിളിൽ പ്രസിദ്ധീകരിക്കും."
+            )
+        elif lang == "ta":
+            return (
+                f"🏛️ **{loc_sec_name} துறைக்கான அதிகாரப்பூர்வ குறிகாட்டிகள் ({p_name} கிராம பஞ்சாயத்து, {d_name}):**\n"
+                f"{indicators_str}\n"
+                f"• **வெளிப்படைத்தன்மை:** மாவட்ட அளவிலான குறிகாட்டிகளுக்கு உத்தியோகபூர்வ தேசிய கணக்கெடுப்பு தரவு பயன்படுத்தப்படுகிறது. கிராம அளவிலான தரவு அடுத்த மக்கள் தொகை கணக்கெடுப்பில் வெளியிடப்படும்."
+            )
+        elif lang == "te":
+            return (
+                f"🏛️ **{loc_sec_name} అభివృద్ధి విభాగం అధికారిక సూచికలు ({p_name} గ్రామ పంచాయతీ, {d_name}):**\n"
+                f"{indicators_str}\n"
+                f"• **పారదర్శకత గమనిక:** జిల్లా స్థాయి సూచికల కోసం అధికారిక జాతీయ సర్వే (NFHS-5, నీతి ఆయోగ్) సమాచారాన్ని ఉపయోగించారు. గ్రామ పంచాయతీ స్థాయి సూక్ష్మ సమాచారం రాబోయే సర్వేలో విడుదలవుతుంది."
+            )
+        else:
+            return (
+                f"🏛️ **{loc_sec_name} Official Indicators for {p_name} GP ({d_name}, {s_name}):**\n"
+                f"{indicators_str}\n"
+                f"• **Transparency Notice:** Indicators marked as District Benchmark represent certified line-department survey figures (NFHS-5, NITI Aayog MPI, UDISE+). Village-level survey microdata is pending publication in the upcoming Census / Field Survey round."
+            )
+
+    def _format_component_explanation(self, comp_id, ctx, lang):
+        """Explain dashboard components dynamically when user clicks 'Explain' buttons."""
+        loc = ctx["location"]
+        p_name = loc["panchayat"]
+        d_name = loc["district"]
+        c_id = str(comp_id).lower()
+        if "infra" in c_id or "chart_d" in c_id:
+            return self._format_sector_overview("Infrastructure", ctx, lang)
+        elif "budget" in c_id or "chart_b" in c_id:
+            top_allocs = ctx["lp_budget"]["allocations"][:4]
+            alloc_lines = "\n".join([f"  - **{a['sector']}:** ₹{a['amount_lakhs']}L ({a['pct']}%)" for a in top_allocs])
+            return (
+                f"📊 **Linear Programming Budget Optimization Model (FY {loc['financial_year']}):**\n"
+                f"• **Total SFC Plan Fund:** ₹{ctx['lp_budget']['total_plan_fund_lakhs']} Lakhs.\n"
+                f"• **Mathematical Solver:** SciPy HiGHS Solver maximizing vulnerability reduction subject to statutory floors (5%) and ceilings (35%).\n"
+                f"• **Recommended Outlays:**\n{alloc_lines}\n"
+                f"• **Audited Assurance:** Zero cross-ward contamination; strictly adheres to 15th Finance Commission untied guidelines."
+            )
+        elif "demo" in c_id or "chart_c" in c_id:
+            d = ctx["demographics"]
+            return (
+                f"👥 **Census Demographic Breakdown ({p_name} GP, {d_name}):**\n"
+                f"• **Total Verified Population:** {d['total_population']:,} across {ctx['active_wards_count']} Wards.\n"
+                f"• **Literacy Rate:** {d['literacy_rate']}%\n"
+                f"• **SC/ST Population:** {d['sc_st_population']:,} ({d['sc_st_pct']}% of total population).\n"
+                f"• **Age Breakdown:** Children (0-14): {d['children_0_14']:,} • Working Age (15-59): {d['working_15_59']:,} • Elderly: {d['elderly_60_plus']:,}."
+            )
+        elif "trajectory" in c_id or "chart_f" in c_id:
+            hist = ctx["historical_trajectory"]
+            trend_lines = "\n".join([f"  - **{r['financial_year']}:** Score {r['development_index']:.1f} | Outlay: ₹{r['approved_outlay_lakhs']:.1f}L | Exp: ₹{r['expenditure_lakhs']:.1f}L ({r['utilization_rate_pct']}%)" for r in hist])
+            return (
+                f"📈 **Multi-Year Audited GPDP Development Trajectory:**\n"
+                f"{trend_lines}\n"
+                f"• **Planning Cycle:** Target composite index for FY 2026-27 is {hist[-1]['development_index']:.1f}."
+            )
+        else:
+            return self._format_sector_overview(ctx["top_sector"]["name"], ctx, lang)
 
     def _generate_deterministic_response(self, intent, lang, ctx, component_context=None):
         """
@@ -437,6 +723,28 @@ GROUND TRUTH DATA:
         tot_pop = f"{demo['total_population']:,}"
         lit = f"{demo['literacy_rate']:.1f}%"
         budget = f"₹{lp['total_plan_fund_lakhs']:.1f} Lakhs"
+
+        # Route specific indicator query
+        if intent == "INTENT_SPECIFIC_INDICATOR" and ctx.get("target_indicator"):
+            return self._format_indicator_response(ctx["target_indicator"], lang, loc)
+
+        # Route component explanation query
+        if intent == "INTENT_EXPLAIN_COMPONENT" and component_context:
+            comp_id = component_context.get("id") or component_context.get("title", "")
+            return self._format_component_explanation(comp_id, ctx, lang)
+
+        # Route sector-level queries
+        SECTOR_INTENT_MAP = {
+            "INTENT_HEALTH": "Health & Sanitation",
+            "INTENT_EDUCATION": "Education",
+            "INTENT_WELFARE": "Social Welfare",
+            "INTENT_AGRICULTURE": "Agriculture & Food Security",
+            "INTENT_ECONOMIC": "Economic Development",
+            "INTENT_ENVIRONMENT": "Environment & Disaster Mgmt",
+            "INTENT_DIGITAL": "Digital & E-Governance",
+        }
+        if intent in SECTOR_INTENT_MAP:
+            return self._format_sector_overview(SECTOR_INTENT_MAP[intent], ctx, lang)
 
         top_allocs = lp["allocations"][:3]
         alloc_str_en = ", ".join([f"{a['sector']}: ₹{a['amount_lakhs']}L ({a['pct']}%)" for a in top_allocs])

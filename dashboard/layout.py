@@ -192,34 +192,83 @@ def create_shared_location_breadcrumb(state="ALL", district="ALL", panchayat="AL
     panch_str = f"{panchayat} GP" if panchayat and panchayat != "ALL" else t("all_panchayats", lang)
     fy_str = f"{t('lbl_fy', lang)} {year}" if year else f"{t('lbl_fy', lang)} 2026-27"
 
+    # Cross-platform tricolor badge (renders crisply on all operating systems including Windows)
+    tricolor_badge = html.Span(
+        style={
+            "display": "inline-block",
+            "width": "15px",
+            "height": "10px",
+            "borderRadius": "2px",
+            "background": "linear-gradient(180deg, #FF9933 33.3%, #FFFFFF 33.3%, #FFFFFF 66.6%, #138808 66.6%)",
+            "boxShadow": "0 0 1px rgba(0,0,0,0.35)",
+            "marginRight": "5px",
+            "verticalAlign": "middle",
+            "flexShrink": "0",
+        }
+    )
+
     return html.Div(
         [
             html.Div(
                 [
                     html.Div(
                         [
-                            html.Span(f"🏛️ {t('active_jurisdiction', lang)}", className="breadcrumb-gov-label me-2"),
-                            html.Span(f"🇮🇳 {t('country_india', lang)}", className="crumb-segment"),
-                            html.Span(" / ", className="crumb-sep"),
-                            html.Span(state_str, className="crumb-segment font-semibold" if state != "ALL" else "crumb-segment text-muted"),
-                            html.Span(" / ", className="crumb-sep"),
-                            html.Span(dist_str, className="crumb-segment font-semibold" if district != "ALL" else "crumb-segment text-muted"),
-                            html.Span(" / ", className="crumb-sep"),
-                            html.Span(panch_str, className="crumb-segment crumb-active"),
-                            html.Span(" • ", className="crumb-sep"),
-                            html.Span(fy_str, className="crumb-fy-badge"),
+                            html.Span("🏛️", className="breadcrumb-gov-icon me-1", title="Local Self-Government Institution"),
+                            html.Span(t("active_jurisdiction", lang), className="breadcrumb-gov-label me-2"),
                         ],
-                        className="d-flex align-items-center flex-wrap gap-1",
+                        className="breadcrumb-gov-heading",
                     ),
+                    html.Div(
+                        [
+                            tricolor_badge,
+                            html.Span(t("country_india", lang), className="crumb-segment crumb-country"),
+                        ],
+                        className="crumb-country-box",
+                    ),
+                    html.Span("/", className="crumb-sep"),
+                    html.Span(
+                        state_str,
+                        className=f"crumb-segment {'crumb-highlight font-semibold' if state != 'ALL' else 'text-muted'}",
+                        title=f"State: {state_str}",
+                    ),
+                    html.Span("/", className="crumb-sep"),
+                    html.Span(
+                        dist_str,
+                        className=f"crumb-segment {'crumb-highlight font-semibold' if district != 'ALL' else 'text-muted'}",
+                        title=f"District: {dist_str}",
+                    ),
+                    html.Span("/", className="crumb-sep"),
+                    html.Span(
+                        panch_str,
+                        className="crumb-segment crumb-active",
+                        title=f"Panchayat: {panch_str}",
+                    ),
+                    html.Span("•", className="crumb-dot-sep"),
+                    html.Span(fy_str, className="crumb-fy-badge", title="Active Decentralized Planning Financial Year"),
                 ],
                 className="breadcrumb-left-content",
             ),
             html.Div(
                 [
-                    html.Span(f"⚡ {t('synced_master_location', lang)}", className="sync-status-badge d-none d-md-inline-block me-2"),
-                    dcc.Link(f"← {t('change_on_home', lang)}", href="/dashboard/#state-selection-section", className="crumb-change-link"),
+                    html.Span(
+                        [
+                            html.Span("⚡", className="sync-icon me-1"),
+                            html.Span(t("synced_master_location", lang)),
+                        ],
+                        className="sync-status-badge d-none d-md-inline-flex",
+                        title="Synchronized with Master Location Store across all 5 States",
+                    ),
+                    dcc.Link(
+                        [
+                            html.Span("←", className="me-1 font-bold"),
+                            html.Span(t("change_on_home", lang)),
+                        ],
+                        href="/dashboard/#state-selection-section",
+                        className="crumb-change-link",
+                        title="Return to Home State & Panchayat Selection Panel",
+                    ),
                 ],
-                className="breadcrumb-right-actions d-flex align-items-center",
+                className="breadcrumb-right-actions",
             ),
         ],
         className="universal-location-breadcrumb-bar mb-3",

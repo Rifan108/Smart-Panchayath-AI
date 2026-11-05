@@ -50,7 +50,7 @@ def create_mini_donut_svg(sectors_data=None, total_budget_cr=50.0, lang="en"):
             ("Others", 10, 0.1 * total_budget_cr, "#64748B"),
         ]
 
-    cx, cy, R, r = 65.0, 65.0, 56.0, 36.0
+    cx, cy, R, r = 60.0, 60.0, 52.0, 34.0
     total_val = sum(s[1] for s in sectors_data) or 100.0
     current_angle = -90.0
     paths_html = []
@@ -92,7 +92,7 @@ def create_mini_donut_svg(sectors_data=None, total_budget_cr=50.0, lang="en"):
     svg_html = f"""
 <div class="interactive-donut-wrapper" id="interactive-hero-donut" title="Tap any slice or legend item to inspect values">
     <div id="donut-hover-tooltip" class="donut-tooltip">📊 {first_display}: {first_pct}% ({first_amt_str})</div>
-    <svg viewBox="0 0 130 130" width="130" height="130" class="interactive-donut-svg">
+    <svg viewBox="0 0 120 120" width="120" height="120" class="interactive-donut-svg">
         {paths_str}
     </svg>
     <div class="donut-center-overlay" id="donut-center-overlay">
@@ -201,8 +201,8 @@ def create_overview_layout(engine, state=None, district=None, panchayat=None, ye
         html.Div(
             [
                 html.Span("●", style={"color": color, "marginRight": "6px", "fontSize": "0.75rem", "flexShrink": "0"}),
-                html.Span(get_sector_name(name, lang), className="donut-legend-label text-truncate flex-grow-1"),
-                html.B(f"{pct}%", className="ms-auto ps-2", style={"flexShrink": "0"}),
+                html.Span(get_sector_name(name, lang), className="donut-legend-label", title=get_sector_name(name, lang)),
+                html.Span(f"{pct}%", className="donut-legend-pct"),
             ],
             className=f"donut-legend-item {'active-legend' if idx == 0 else ''}",
             title=f"Tap to inspect {get_sector_name(name, lang)} allocation",
@@ -338,8 +338,8 @@ def create_overview_layout(engine, state=None, district=None, panchayat=None, ye
                                 className="d-flex align-items-center",
                             ),
                         ],
-                        xs=12, md=7,
-                        className="pe-md-2",
+                        xs=12, lg=7,
+                        className="pe-lg-3 mb-3 mb-lg-0",
                     ),
                     dbc.Col(
                         [
@@ -365,11 +365,11 @@ def create_overview_layout(engine, state=None, district=None, panchayat=None, ye
                                 className="text-end mt-2",
                             ),
                         ],
-                        xs=12, md=5,
-                        className="ps-md-2 border-start",
+                        xs=12, lg=5,
+                        className="hero-dashboard-divider",
                     ),
                 ],
-                className="align-items-center",
+                className="align-items-center g-0",
             ),
         ],
         className="floating-hero-dashboard",

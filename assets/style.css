@@ -2339,50 +2339,77 @@ body.font-size-small {
 }
 
 .promo-navy-card {
-    background: linear-gradient(145deg, #0f2443 0%, #0a2141 50%, #001d3b 100%);
+    background-color: #081C38;
+    background: radial-gradient(circle at 60% 40%, #0F2D59 0%, #081C38 100%);
     border: 1px solid rgba(255, 255, 255, 0.12);
     border-radius: 18px;
     overflow: hidden;
     position: relative;
     height: 100%;
-    min-height: 280px;
+    min-height: 340px;
     box-shadow: 0 10px 25px rgba(9, 45, 94, 0.2);
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
+    display: block;
+    padding: 0;
 }
 
 .glowing-india-img {
+    position: absolute;
+    top: 0;
+    left: 0;
     width: 100%;
-    height: auto;
-    max-height: 220px;
-    object-fit: contain;
-    object-position: center top;
+    height: 100%;
+    object-fit: cover;
+    object-position: 8% top;
     display: block;
-    margin: 0 auto;
-    padding: 12px 12px 0 12px;
-    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    max-height: none;
+    z-index: 1;
 }
 
 .promo-navy-overlay {
-    position: relative;
-    bottom: auto;
-    left: auto;
-    right: auto;
-    padding: 14px 20px 20px 20px;
-    background: linear-gradient(180deg, rgba(10, 33, 65, 0) 0%, rgba(10, 33, 65, 0.95) 25%, #0a2141 100%);
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 44px 24px 22px 24px;
+    background: linear-gradient(180deg, rgba(8, 28, 56, 0) 0%, rgba(8, 28, 56, 0.78) 40%, rgba(8, 28, 56, 0.96) 95%);
     z-index: 2;
     box-sizing: border-box;
 }
 
 .promo-navy-title {
-    font-family: 'Manrope', sans-serif !important;
-    font-size: 1.35rem !important;
+    font-family: 'Manrope', 'Plus Jakarta Sans', sans-serif !important;
+    font-size: 1.32rem !important;
     font-weight: 800 !important;
     color: #FFFFFF !important;
     line-height: 1.25;
     margin: 0 0 6px 0;
-    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.7);
+}
+
+@media (max-width: 991.98px) {
+    .promo-navy-card {
+        min-height: 320px;
+    }
+    .glowing-india-img {
+        object-position: center top;
+    }
+}
+
+@media (max-width: 576px) {
+    .promo-navy-card {
+        min-height: 300px;
+    }
+    .glowing-india-img {
+        object-position: 8% top;
+    }
+    .promo-navy-overlay {
+        padding: 30px 18px 18px 18px;
+    }
+    .promo-navy-title {
+        font-size: 1.18rem !important;
+    }
 }
 
 /* Responsive adjustments */

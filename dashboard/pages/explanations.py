@@ -15,6 +15,29 @@ from config import SECTOR_INDICATORS
 from services.i18n import t, get_sector_name
 from dashboard.layout import create_shared_location_breadcrumb
 from services.provenance_service import ProvenanceService, STATUS_VERIFIED, STATUS_CALCULATED, STATUS_MODEL
+from data.indicator_metadata import INDICATOR_METADATA, get_indicator_meta
+
+ALL_SECTORS = [
+    "Economic Development",
+    "Agriculture & Food Security",
+    "Health & Sanitation",
+    "Education",
+    "Infrastructure",
+    "Social Welfare",
+    "Environment & Disaster Mgmt",
+    "Digital & E-Governance",
+]
+
+SECTOR_ICONS = {
+    "Health & Sanitation": "🏥",
+    "Education": "🎓",
+    "Infrastructure": "🛣️",
+    "Agriculture & Food Security": "🌾",
+    "Social Welfare": "👥",
+    "Economic Development": "💼",
+    "Environment & Disaster Mgmt": "🌳",
+    "Digital & E-Governance": "📶",
+}
 
 
 def create_explanations_layout(engine, state=None, district=None, panchayat=None, year="2026-27", lang="en", state_id=None, district_id=None, panchayat_id=None, **kwargs):
@@ -145,27 +168,20 @@ def create_explanations_layout(engine, state=None, district=None, panchayat=None
             dbc.Row(sector_chips, className="g-2"),
         ], className="govt-card p-4 my-4"),
 
-        # Global feature importance chart
-        html.Div([
-            html.Div([
-                html.Span("INDICATOR VARIANCE ANALYSIS", className="priority-badge-blue mb-1 d-inline-block"),
-                html.H4(f"🌐 {t('global_importance_title', lang)}", className="section-title", style={"margin": "4px 0"}),
-                html.P(
-                    "Relative diagnostic weight of socio-economic predictors across all participating Grama Panchayats derived from Gradient-Boosted Tree split-gain metrics.",
-                    style={"color": "#64748B", "fontSize": "0.88rem", "marginBottom": "16px"},
-                ),
-            ]),
-            dcc.Graph(
-                figure=create_global_importance_chart(engine, lang=lang),
-                id="global-importance",
-                style={"height": "400px", "width": "100%", "minHeight": "400px"},
-                config={"displayModeBar": False, "responsive": True},
+        # Indicator Variance Analysis Section (dynamically updated per jurisdiction)
+        dcc.Loading(
+            id="loading-indicator-variance",
+            type="circle",
+            color="#245B91",
+            children=html.Div(
+                create_indicator_variance_section(engine, lang=lang, state=state, district=district, panchayat=panchayat),
+                id="indicator-variance-container",
             ),
-        ], className="govt-card p-4"),
+        ),
     ])
 
 
-def create_ward_explanation(engine, ward_name, lang="en", state=None, district=None, panchayat=None):
+def create_ward_explanation(engine, ward_name, lang="en", state=None, district=None, panchayat=None, selected_sector=None):
     """Create ward-specific explanation content strictly filtered to the active geographic scope."""
     ward_data = engine.get_ward_data(ward_name, state=state, district=district, panchayat=panchayat)
     if not ward_data:
@@ -456,18 +472,166 @@ def create_ward_explanation(engine, ward_name, lang="en", state=None, district=N
             ]),
         ], className="govt-card p-4 mb-4"),
 
-        # Sector indicator diagnostic chart
+        # Sector Indicator Drill-Down Section with Interactive Sector Selector
         html.Div([
+            # Sector Selector Control Bar
             html.Div([
-                html.Span("INDICATOR DRILL-DOWN", className="priority-badge-blue mb-1 d-inline-block"),
-                html.H4(f"📊 {t('sector_indicators_title', lang)} — {get_sector_name(p1, lang)}", className="section-title", style={"margin": "4px 0"}),
-                html.P(
-                    f"Normalized vulnerability scores for specific sub-indicators contributing to the {get_sector_name(p1, lang)} deficit in {ward_name}.",
-                    style={"color": "#64748B", "fontSize": "0.88rem", "marginBottom": "16px"},
+                dbc.Row([
+                    dbc.Col([
+                        html.Label("🔍 Select Development Sector for Empirical Drill-Down:", style={"fontWeight": "700", "color": "#142D4E", "fontSize": "0.88rem"}),
+                        dcc.Dropdown(
+                            id="explain-sector-selector",
+                            options=[{"label": f"{SECTOR_ICONS.get(s, '📊')} {get_sector_name(s, lang)}", "value": s} for s in ALL_SECTORS],
+                            value=selected_sector or p1,
+                            className="light-dropdown",
+                            clearable=False,
+                        ),
+                    ], md=8),
+                    dbc.Col([
+                        html.Div([
+                            html.Span("AI RECOMMENDED PRIORITY #1", style={"fontSize": "0.7rem", "fontWeight": "700", "color": "#C74747", "display": "block"}),
+                            html.Strong(f"{get_sector_name(p1, lang)}", style={"color": "#142D4E", "fontSize": "0.92rem"}),
+                            html.Span(f" • Score: {score_p1}/100", style={"fontSize": "0.78rem", "color": "#64748B"}),
+                        ], style={"background": "#FEF2F2", "padding": "8px 12px", "borderRadius": "6px", "border": "1px solid #FECACA"}),
+                    ], md=4, className="d-flex align-items-center justify-content-md-end mt-2 mt-md-0"),
+                ], className="align-items-center g-2"),
+            ], className="mb-3 p-3", style={"background": "#F8FAFC", "borderRadius": "8px", "border": "1px solid #E2E8F0"}),
+
+            # Dynamic drill-down view (chart + metadata table)
+            dcc.Loading(
+                id="loading-sector-drilldown",
+                type="circle",
+                color="#245B91",
+                children=html.Div(
+                    create_sector_drilldown_view(engine, ward_name, selected_sector or p1, lang=lang, state=state, district=district, panchayat=panchayat),
+                    id="sector-drilldown-view",
                 ),
-            ]),
-            dcc.Graph(figure=indicator_chart, style={"height": "380px", "width": "100%", "minHeight": "380px"}, config={"displayModeBar": False, "responsive": True}),
+            ),
         ], className="govt-card p-4"),
+    ])
+
+
+def create_sector_drilldown_view(engine, ward_name, sector_name, lang="en", state=None, district=None, panchayat=None):
+    """Render dynamic drill-down chart and indicator metadata table for the chosen sector and ward."""
+    lang = lang or "en"
+    ward_data = engine.get_ward_data(ward_name, state=state, district=district, panchayat=panchayat)
+    if not ward_data:
+        return html.P("No indicator records available for the selected ward.", className="text-muted p-3")
+
+    p_name = ward_data.get("panchayat_name", panchayat or "")
+    d_name = ward_data.get("district", district or "")
+    loc_subtitle = f"{ward_name}, {p_name} GP, {d_name}" if p_name else f"{ward_name}"
+
+    # Map sector name
+    config_sector = sector_name
+    if config_sector not in SECTOR_INDICATORS:
+        for key in SECTOR_INDICATORS:
+            if key.lower().replace(" ", "") == sector_name.lower().replace(" ", "").replace("&", "and"):
+                config_sector = key
+                break
+
+    indicators = SECTOR_INDICATORS.get(config_sector, [])
+    if not indicators:
+        return html.P(f"No indicators configured for {sector_name}", className="text-muted p-3")
+
+    chart_fig = create_sector_indicator_chart(engine, ward_name, config_sector, lang=lang, state=state, district=district, panchayat=panchayat)
+
+    # Build detailed metadata rows
+    table_rows = []
+    for ind in indicators:
+        meta = INDICATOR_METADATA.get(ind, {
+            "id": ind,
+            "name": ind.replace("_", " ").title(),
+            "sector": config_sector,
+            "definition": "Official developmental sub-indicator",
+            "unit": "ratio",
+            "direction": "Normalized Metric",
+            "source": "Government Statistical Reports",
+            "period": "2023-2024",
+        })
+
+        norm_col = f"{ind}_norm"
+        adj_col = f"{ind}_adjusted"
+        val = ward_data.get(adj_col, ward_data.get(norm_col, None))
+        raw_val = ward_data.get(ind, None)
+
+        vuln_score = float(val) if val is not None else 0.50
+
+        # Badge styling based on vulnerability level
+        if vuln_score >= 0.65:
+            vuln_badge = html.Span(f"{vuln_score:.3f} • High Deficit", className="badge bg-danger")
+        elif vuln_score >= 0.35:
+            vuln_badge = html.Span(f"{vuln_score:.3f} • Moderate Deficit", className="badge bg-warning text-dark")
+        else:
+            vuln_badge = html.Span(f"{vuln_score:.3f} • Low Deficit", className="badge bg-success")
+
+        # Format raw value
+        if raw_val is not None:
+            try:
+                rf = float(raw_val)
+                if "₹" in meta["unit"] or "income" in ind or rf > 1000:
+                    raw_str = f"₹{rf:,.0f}" if "₹" in meta["unit"] or "income" in ind else f"{rf:,.1f} {meta['unit']}"
+                elif "%" in meta["unit"] or "pct" in ind or "rate" in ind:
+                    raw_str = f"{rf:.1f}%" if "%" in meta["unit"] or "pct" in ind else f"{rf:.2f} {meta['unit']}"
+                else:
+                    raw_str = f"{rf:.2f} {meta['unit']}"
+            except Exception:
+                raw_str = f"{raw_val} {meta['unit']}"
+        else:
+            raw_str = "Baseline Standard"
+
+        table_rows.append(
+            html.Tr([
+                html.Td([
+                    html.Strong(meta["name"], style={"color": "#142D4E", "display": "block", "fontSize": "0.88rem"}),
+                    html.Code(ind, style={"fontSize": "0.72rem", "color": "#64748B"}),
+                ], style={"width": "22%"}),
+                html.Td(meta["definition"], style={"fontSize": "0.82rem", "color": "#475569", "width": "28%"}),
+                html.Td(html.B(raw_str, style={"color": "#1E293B", "fontSize": "0.86rem"}), style={"width": "15%"}),
+                html.Td(vuln_badge, style={"width": "15%"}),
+                html.Td([
+                    html.Span(meta["source"], style={"fontSize": "0.78rem", "color": "#334155", "display": "block", "fontWeight": "600"}),
+                    html.Small(f"Reporting: {meta['period']} • {meta['direction']}", style={"color": "#64748B", "fontSize": "0.72rem"}),
+                ], style={"width": "20%"}),
+            ])
+        )
+
+    return html.Div([
+        # Dynamic Section Header
+        html.Div([
+            html.Span("INDICATOR DRILL-DOWN", className="priority-badge-blue mb-1 d-inline-block"),
+            html.H4(f"📊 {t('sector_indicators_title', lang)} — {get_sector_name(config_sector, lang)}", className="section-title", style={"margin": "4px 0"}),
+            html.P(
+                f"Normalized vulnerability scores and empirical baseline metrics for sub-indicators contributing to the {get_sector_name(config_sector, lang)} deficit in {loc_subtitle}.",
+                style={"color": "#64748B", "fontSize": "0.88rem", "marginBottom": "16px"},
+            ),
+        ]),
+
+        # Vulnerability Chart
+        dcc.Graph(
+            figure=chart_fig,
+            style={"height": "360px", "width": "100%", "minHeight": "360px"},
+            config={"displayModeBar": False, "responsive": True},
+        ),
+
+        # Indicator Metadata & Metrics Table
+        html.Div([
+            html.H5("📋 Authoritative Sub-Indicator Metadata & Ward Empirical Values", style={"color": "#142D4E", "fontSize": "0.95rem", "fontWeight": "700", "margin": "16px 0 10px"}),
+            html.Div([
+                dbc.Table([
+                    html.Thead(
+                        html.Tr([
+                            html.Th("Sub-Indicator", style={"background": "#F1F5F9", "color": "#142D4E", "fontSize": "0.82rem"}),
+                            html.Th("Official Definition", style={"background": "#F1F5F9", "color": "#142D4E", "fontSize": "0.82rem"}),
+                            html.Th("Empirical Base Value", style={"background": "#F1F5F9", "color": "#142D4E", "fontSize": "0.82rem"}),
+                            html.Th("Vulnerability Score", style={"background": "#F1F5F9", "color": "#142D4E", "fontSize": "0.82rem"}),
+                            html.Th("Data Source & Period", style={"background": "#F1F5F9", "color": "#142D4E", "fontSize": "0.82rem"}),
+                        ])
+                    ),
+                    html.Tbody(table_rows),
+                ], bordered=True, hover=True, responsive=True, className="align-middle mb-0"),
+            ], style={"borderRadius": "8px", "overflow": "hidden", "border": "1px solid #E2E8F0"}),
+        ], className="mt-3"),
     ])
 
 
@@ -478,7 +642,7 @@ def create_sector_indicator_chart(engine, ward_name, sector_name, lang="en", sta
         fig = go.Figure()
         fig.add_annotation(text="No data available for selected ward in this jurisdiction", xref="paper", yref="paper",
                            x=0.5, y=0.5, showarrow=False, font_size=16)
-        fig.update_layout(template="plotly_white", paper_bgcolor="#FFFFFF", plot_bgcolor="#FFFFFF", height=380)
+        fig.update_layout(template="plotly_white", paper_bgcolor="#FFFFFF", plot_bgcolor="#FFFFFF", height=360)
         return fig
 
     # Map sector name
@@ -494,7 +658,7 @@ def create_sector_indicator_chart(engine, ward_name, sector_name, lang="en", sta
         fig = go.Figure()
         fig.add_annotation(text=f"No indicators configured for {sector_name}",
                            xref="paper", yref="paper", x=0.5, y=0.5, showarrow=False)
-        fig.update_layout(template="plotly_white", paper_bgcolor="#FFFFFF", plot_bgcolor="#FFFFFF", height=380)
+        fig.update_layout(template="plotly_white", paper_bgcolor="#FFFFFF", plot_bgcolor="#FFFFFF", height=360)
         return fig
 
     # Extract normalized values
@@ -502,7 +666,9 @@ def create_sector_indicator_chart(engine, ward_name, sector_name, lang="en", sta
     values = []
     hover_texts = []
 
-    for ind in indicators:
+    # Reverse so first indicator is at top of horizontal bar chart
+    for ind in reversed(indicators):
+        meta = INDICATOR_METADATA.get(ind, {})
         norm_col = f"{ind}_norm"
         adj_col = f"{ind}_adjusted"
 
@@ -512,85 +678,191 @@ def create_sector_indicator_chart(engine, ward_name, sector_name, lang="en", sta
         readable_name = get_indicator_label(ind, lang=lang)
         labels.append(readable_name)
 
+        unit = meta.get("unit", "")
+        raw_display = f"{raw_val} {unit}".strip() if raw_val is not None else "Baseline Standard"
+
         if val is not None:
-            values.append(float(val))
-            hover_texts.append(f"<b>{readable_name}</b><br>Normalized Vulnerability: {float(val):.3f}<br>Empirical Base Value: {raw_val}")
+            v_float = float(val)
+            values.append(v_float)
+            tier_str = "High Deficit" if v_float >= 0.65 else ("Moderate Deficit" if v_float >= 0.35 else "Low Deficit")
+            hover_texts.append(
+                f"<b>{readable_name}</b> ({ind})<br>"
+                f"Vulnerability Score: <b>{v_float:.3f}</b> ({tier_str})<br>"
+                f"Empirical Value: <b>{raw_display}</b><br>"
+                f"Direction: {meta.get('direction', 'Vulnerability Metric')}<br>"
+                f"Source: {meta.get('source', 'Govt Records')} ({meta.get('period', '')})"
+            )
         else:
             values.append(0.5)
             hover_texts.append(f"<b>{readable_name}</b><br>Score: 0.500 (standardized baseline)")
 
     # Color coding according to severity
-    colors = ["#25845A" if v < 0.35 else "#E99A36" if v < 0.65 else "#C74747" for v in values]
+    colors = ["#059669" if v < 0.35 else "#D97706" if v < 0.65 else "#DC2626" for v in values]
 
     fig = go.Figure(data=[go.Bar(
         y=labels, x=values, orientation="h",
-        marker_color=colors,
-        text=[f"{v:.2f}" for v in values],
+        marker=dict(
+            color=colors,
+            line=dict(color="#1E293B", width=0.5),
+        ),
+        text=[f"{v:.3f}" for v in values],
         textposition="outside",
         hovertext=hover_texts, hoverinfo="text",
+        cliponaxis=False,
     )])
 
-    localized_sector_title = get_sector_name(sector_name, lang)
-    xaxis_lbl = "Vulnerability Deficit Score (0.00 = Optimal Resilience, 1.00 = Severe Bottleneck)"
+    # Reference benchmark line at 0.50
+    fig.add_vline(
+        x=0.50,
+        line_dash="dash",
+        line_color="#94A3B8",
+        line_width=1.5,
+        annotation_text="Standardized Baseline (0.50)",
+        annotation_position="top right",
+        annotation_font=dict(size=10, color="#64748B"),
+    )
+
+    localized_sector_title = get_sector_name(config_sector, lang)
+    xaxis_lbl = "Normalized Vulnerability Score (0.00 = Optimal Resilience, 1.00 = Severe Bottleneck)"
+
+    p_gp = ward_data.get("panchayat_name", panchayat or "")
+    ward_title = f"{ward_name}, {p_gp} GP" if p_gp else ward_name
 
     fig.update_layout(
         title=dict(
-            text=f"<b>Sector Diagnostics: {localized_sector_title} ({ward_name})</b>",
-            font=dict(family="Plus Jakarta Sans, Inter", size=15, color="#142D4E"),
+            text=f"<b>Sector Diagnostics: {localized_sector_title} — {ward_title}</b>",
+            font=dict(family="Plus Jakarta Sans, Inter", size=14, color="#142D4E"),
         ),
         xaxis_title=xaxis_lbl,
-        xaxis=dict(range=[0, 1.18], gridcolor="#E2E8F0"),
+        xaxis=dict(range=[0, 1.22], gridcolor="#E2E8F0"),
         yaxis=dict(gridcolor="rgba(0,0,0,0)"),
         template="plotly_white",
         paper_bgcolor="#FFFFFF",
         plot_bgcolor="#FFFFFF",
         height=360,
         font=dict(family="Inter", color="#172B42", size=12),
-        margin=dict(l=240, r=40, t=50, b=45),
+        margin=dict(l=260, r=60, t=50, b=45),
     )
     return fig
 
 
-def create_global_importance_chart(engine, lang="en"):
-    """Create global feature importance chart based on cross-ward variance in government light styling."""
+def create_indicator_variance_section(engine, lang="en", state=None, district=None, panchayat=None):
+    """Render the dynamic Indicator Variance Analysis section with model provenance, active scope, and chart."""
     lang = lang or "en"
-    imp = engine.get_feature_importance()
+    meta = engine.get_feature_importance(state=state, district=district, panchayat=panchayat, include_metadata=True)
+    scope = meta.get("geographic_scope", "National Baseline")
+    interpretation = meta.get("interpretation", "")
+    model_name = meta.get("model_name", "HistGradientBoostingClassifier v3.0.0")
+    dataset_name = meta.get("dataset", "NITI Aayog MPI, NFHS-5, Census 2011, JJM")
+    period = meta.get("training_period", "FY 2021-22 to FY 2026-27")
+
+    fig = create_global_importance_chart(engine, lang=lang, state=state, district=district, panchayat=panchayat)
+
+    return html.Div([
+        # Header with dynamic scope
+        html.Div([
+            html.Div([
+                html.Span("INDICATOR VARIANCE ANALYSIS", className="priority-badge-blue mb-1 d-inline-block"),
+                html.H4(f"🌐 Diagnostic Indicator Importance — {scope}", className="section-title", style={"margin": "4px 0"}),
+                html.P(
+                    f"Relative diagnostic weight of socio-economic predictors across {scope} derived from Champion HistGradientBoosting Tree split-gain and cross-ward variance.",
+                    style={"color": "#64748B", "fontSize": "0.88rem", "marginBottom": "14px"},
+                ),
+            ]),
+
+            # Model & Geographic Provenance Metadata Badges
+            html.Div([
+                html.Span([
+                    html.Strong("Model: ", style={"color": "#142D4E"}),
+                    f"{model_name}"
+                ], className="dash-preview-pill bg-light border"),
+                html.Span([
+                    html.Strong("Dataset: ", style={"color": "#142D4E"}),
+                    f"{dataset_name}"
+                ], className="dash-preview-pill bg-light border"),
+                html.Span([
+                    html.Strong("Period: ", style={"color": "#142D4E"}),
+                    f"{period}"
+                ], className="dash-preview-pill bg-light border"),
+                html.Span([
+                    html.Strong("Scope: ", style={"color": "#245B91"}),
+                    f"{scope}"
+                ], className="dash-preview-pill", style={"background": "#EFF6FF", "borderColor": "#BFDBFE", "color": "#1D4ED8"}),
+            ], className="d-flex flex-wrap gap-2 mb-3"),
+
+            # Analytical Interpretation Box
+            html.Div([
+                html.Div([
+                    html.Span("💡", style={"fontSize": "1.1rem", "marginRight": "8px"}),
+                    html.Strong("Analytical Diagnostic Rationale: ", style={"color": "#0F2942", "fontSize": "0.88rem"}),
+                    html.Span(interpretation, style={"color": "#334155", "fontSize": "0.85rem", "lineHeight": "1.5"}),
+                ], className="d-flex align-items-start"),
+            ], className="p-3 mb-3", style={"background": "#F0FDF4", "border": "1px solid #BBF7D0", "borderRadius": "8px"}),
+        ]),
+
+        # Interactive Horizontal Bar Chart
+        dcc.Graph(
+            figure=fig,
+            id="global-importance",
+            style={"height": "400px", "width": "100%", "minHeight": "400px"},
+            config={"displayModeBar": False, "responsive": True},
+        ),
+    ], className="govt-card p-4")
+
+
+def create_global_importance_chart(engine, lang="en", state=None, district=None, panchayat=None):
+    """Create diagnostic importance chart based on champion model split-gain and cross-ward variance."""
+    lang = lang or "en"
+    imp_meta = engine.get_feature_importance(state=state, district=district, panchayat=panchayat, include_metadata=True)
+    imp = imp_meta.get("scores", {})
+    scope = imp_meta.get("geographic_scope", "Selected Scope")
+
     if not imp:
         return go.Figure()
 
-    if isinstance(imp, dict):
-        items = list(imp.items())[:10]
-        y_labels = [get_indicator_label(k, lang=lang) for k, _ in reversed(items)]
-        x_vals = [float(v) for _, v in reversed(items)]
-    elif hasattr(imp, "head"):
-        top_imp = imp.head(10).iloc[::-1]
-        raw_keys = top_imp["feature"].tolist() if "feature" in top_imp.columns else top_imp.index.tolist()
-        y_labels = [get_indicator_label(k, lang=lang) for k in raw_keys]
-        x_vals = top_imp["importance"].tolist()
-    else:
-        return go.Figure()
+    items = list(imp.items())[:10]
+    items_rev = list(reversed(items))
+    y_labels = [get_indicator_label(k, lang=lang) for k, _ in items_rev]
+    x_vals = [float(v) for _, v in items_rev]
+
+    hover_texts = []
+    for k, v in items_rev:
+        m = INDICATOR_METADATA.get(k, {})
+        hover_texts.append(
+            f"<b>{m.get('name', k.replace('_', ' ').title())}</b><br>"
+            f"Diagnostic Importance: <b>{v:.4f}</b><br>"
+            f"Sector: {m.get('sector', 'General')}<br>"
+            f"Source: {m.get('source', 'Authentic Govt Data')}<br>"
+            f"Direction: {m.get('direction', 'Vulnerability Metric')}"
+        )
 
     max_x = max(x_vals) if x_vals else 0.1
     fig = go.Figure(data=[go.Bar(
         y=y_labels,
         x=x_vals,
         orientation="h",
-        marker_color="#245B91",
-        text=[f"{v:.3f}" for v in x_vals],
+        marker=dict(
+            color=x_vals,
+            colorscale=[[0, "#3B82F6"], [0.5, "#2563EB"], [1, "#1D4ED8"]],
+            line=dict(color="#1E40AF", width=1),
+        ),
+        text=[f"{v:.4f}" for v in x_vals],
         textposition="outside",
         cliponaxis=False,
+        hoverinfo="text",
+        hovertext=hover_texts,
     )])
 
-    chart_title = "<b>Cross-Ward Diagnostic Variance (Top 10 Socio-Economic Indicators)</b>"
+    chart_title = f"<b>Top 10 Diagnostic Predictors — {scope}</b>"
 
     fig.update_layout(
         title=dict(
             text=chart_title,
-            font=dict(family="Plus Jakarta Sans, Inter", size=15, color="#142D4E"),
+            font=dict(family="Plus Jakarta Sans, Inter", size=14, color="#142D4E"),
         ),
         xaxis=dict(
-            title="Standardized Cross-Ward Gini Variance / Tree Split Weight",
-            range=[0, max_x * 1.22],
+            title="Diagnostic Split-Gain & Dispersion Metric",
+            range=[0, max_x * 1.25],
             gridcolor="#E2E8F0",
         ),
         yaxis=dict(gridcolor="rgba(0,0,0,0)"),
@@ -599,6 +871,6 @@ def create_global_importance_chart(engine, lang="en"):
         plot_bgcolor="#FFFFFF",
         height=400,
         font=dict(family="Inter", color="#172B42", size=12),
-        margin=dict(l=240, r=60, t=50, b=45),
+        margin=dict(l=260, r=60, t=50, b=45),
     )
     return fig

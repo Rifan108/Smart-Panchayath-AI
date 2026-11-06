@@ -15,7 +15,12 @@ from dashboard.pages.overview import create_overview_layout
 from dashboard.pages.about import create_about_layout
 from dashboard.pages.vulnerability import create_vulnerability_layout, create_radar_chart
 from dashboard.pages.budget import create_budget_layout, create_budget_charts
-from dashboard.pages.explanations import create_explanations_layout, create_ward_explanation
+from dashboard.pages.explanations import (
+    create_explanations_layout,
+    create_ward_explanation,
+    create_sector_drilldown_view,
+    create_indicator_variance_section,
+)
 from dashboard.pages.comparison import create_comparison_layout, create_comparison_content
 from dashboard.pages.training import create_training_layout
 from dashboard.pages.auth import create_auth_layout
@@ -627,6 +632,38 @@ def register_callbacks(app, engine):
             return html.P(t("no_ward_selected", lang))
 
         return create_ward_explanation(engine, ward_name, lang=lang, state=state, district=district, panchayat=panchayat)
+
+    @app.callback(
+        Output("sector-drilldown-view", "children"),
+        Input("explain-sector-selector", "value"),
+        State("explain-ward-selector", "value"),
+        State("global-location-store", "data"),
+        State("current-lang-store", "data"),
+        prevent_initial_call=True,
+    )
+    def update_sector_drilldown(sector_name, ward_name, loc_data, lang):
+        if not sector_name or not ward_name:
+            raise dash.exceptions.PreventUpdate
+        lang = lang or "en"
+        loc_data = loc_data or {}
+        state = loc_data.get("state_name") or loc_data.get("state", "ALL")
+        district = loc_data.get("district_name") or loc_data.get("district", "ALL")
+        panchayat = loc_data.get("panchayat_name") or loc_data.get("panchayat", "ALL")
+        return create_sector_drilldown_view(engine, ward_name, sector_name, lang=lang, state=state, district=district, panchayat=panchayat)
+
+    @app.callback(
+        Output("indicator-variance-container", "children"),
+        Input("global-location-store", "data"),
+        Input("current-lang-store", "data"),
+        prevent_initial_call=True,
+    )
+    def update_indicator_variance(loc_data, lang):
+        lang = lang or "en"
+        loc_data = loc_data or {}
+        state = loc_data.get("state_name") or loc_data.get("state", "ALL")
+        district = loc_data.get("district_name") or loc_data.get("district", "ALL")
+        panchayat = loc_data.get("panchayat_name") or loc_data.get("panchayat", "ALL")
+        return create_indicator_variance_section(engine, lang=lang, state=state, district=district, panchayat=panchayat)
 
     @app.callback(
         Output("comparison-content-container", "children"),

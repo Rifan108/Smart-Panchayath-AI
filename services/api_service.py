@@ -453,8 +453,13 @@ def get_insights():
     if df.empty:
         return jsonify({"location": loc, "error": "No records found"}), 404
 
-    # Global feature importance from champion model
-    feat_importance = engine.get_feature_importance()
+    # Diagnostic feature importance from champion model with active jurisdiction scope
+    feat_importance = engine.get_feature_importance(
+        state=loc["state_name"],
+        district=loc["district_name"],
+        panchayat=loc["panchayat_name"],
+        include_metadata=True,
+    )
 
     ward_insight = None
     if ward_name and ward_name.strip().upper() != "ALL":

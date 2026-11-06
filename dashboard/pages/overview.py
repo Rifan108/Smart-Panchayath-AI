@@ -1170,17 +1170,22 @@ def create_overview_layout(engine, state=None, district=None, panchayat=None, ye
                         [
                             html.Div(
                                 [
-                                    html.Img(
-                                        src="/dashboard/assets/images/glowing-india.jpg",
-                                        className="glowing-india-img",
-                                        alt="Digital India glowing network",
+                                    html.Div(
+                                        [
+                                            html.Img(
+                                                src="/dashboard/assets/images/glowing-india.jpg",
+                                                className="glowing-india-img",
+                                                alt="Digital India glowing network",
+                                            ),
+                                        ],
+                                        className="promo-navy-img-wrap",
                                     ),
                                     html.Div(
                                         [
                                             html.H3("Building a Developed India, Together", className="promo-navy-title"),
-                                            html.P("Unifying local governance digital infrastructure across Kerala, Karnataka, Tamil Nadu, Andhra Pradesh & Maharashtra.", style={"color": "#E2E8F0", "fontSize": "0.85rem", "margin": "0"}),
+                                            html.P("Unifying local governance digital infrastructure across Kerala, Karnataka, Tamil Nadu, Andhra Pradesh & Maharashtra.", className="promo-navy-desc"),
                                         ],
-                                        className="promo-navy-overlay",
+                                        className="promo-navy-content",
                                     ),
                                 ],
                                 className="promo-navy-card",

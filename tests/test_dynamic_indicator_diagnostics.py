@@ -103,3 +103,4 @@ def test_indicator_variance_section_scope_adaptation(engine):
     )
     str_bantwal = str(sec_bantwal)
     assert "Bantwal" in str_bantwal
+

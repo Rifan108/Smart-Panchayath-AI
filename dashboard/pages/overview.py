@@ -799,9 +799,14 @@ def create_overview_layout(engine, state=None, district=None, panchayat=None, ye
         plot_bgcolor="#FFFFFF",
         height=320,
         font=dict(family="Inter", color="#172B42", size=11),
-        yaxis=dict(title="Number of Wards / Communities", range=[0, int(max_w * 1.25) + 2], gridcolor="#E2E8F0"),
+        yaxis=dict(
+            title=dict(text="Number of Wards / Communities", standoff=10),
+            range=[0, int(max_w * 1.25) + 2],
+            gridcolor="#E2E8F0",
+            automargin=True,
+        ),
         xaxis=dict(gridcolor="rgba(0,0,0,0)"),
-        margin=dict(l=50, r=30, t=30, b=40),
+        margin=dict(l=65, r=30, t=30, b=40),
     )
 
     # ── Chart D: Infrastructure Availability & Coverage Scores ──
@@ -895,7 +900,14 @@ def create_overview_layout(engine, state=None, district=None, panchayat=None, ye
     y_min = max(0, int(min(dev_trajectory) - 10))
     y_max = min(105, int(max(dev_trajectory) + 12))
     n_pts = len(years)
-    pos_list = ["top center"] * max(1, n_pts - 1) + ["top left"]
+    pos_list = []
+    for i in range(n_pts):
+        if i == 0:
+            pos_list.append("top right")
+        elif i == n_pts - 1:
+            pos_list.append("top left")
+        else:
+            pos_list.append("top center")
     custom_tuples = list(zip(outlay_vals, exp_vals, utl_vals, statuses))
 
     fig_f = go.Figure()
@@ -908,6 +920,7 @@ def create_overview_layout(engine, state=None, district=None, panchayat=None, ye
             marker=dict(size=9, color="#142D4E", line=dict(color="#FFFFFF", width=2)),
             text=[f"{v:.1f}" for v in dev_trajectory],
             textposition=pos_list,
+            textfont=dict(family="Inter, sans-serif", size=11, color="#142D4E"),
             cliponaxis=False,
             hovertemplate="<b>%{x}</b><br>Composite Index Score: <b>%{y:.1f}</b><br>Outlay: ₹%{customdata[0]:.1f}L | Exp: ₹%{customdata[1]:.1f}L (%{customdata[2]:.1f}%)<br>Status: %{customdata[3]}<extra></extra>",
             customdata=custom_tuples,
@@ -921,9 +934,22 @@ def create_overview_layout(engine, state=None, district=None, panchayat=None, ye
         plot_bgcolor="#FFFFFF",
         height=320,
         font=dict(family="Inter", color="#172B42", size=11),
-        yaxis=dict(title="Composite Development Index Score", range=[y_min, y_max], gridcolor="#E2E8F0"),
-        xaxis=dict(gridcolor="rgba(0,0,0,0)", automargin=True),
-        margin=dict(l=50, r=50, t=35, b=45),
+        yaxis=dict(
+            title=dict(
+                text="Composite Development Index Score",
+                standoff=14,
+                font=dict(family="Inter, sans-serif", size=11, color="#142D4E"),
+            ),
+            range=[y_min, y_max],
+            gridcolor="#E2E8F0",
+            automargin=True,
+        ),
+        xaxis=dict(
+            range=[-0.35, n_pts - 0.65],
+            gridcolor="rgba(0,0,0,0)",
+            automargin=True,
+        ),
+        margin=dict(l=75, r=40, t=35, b=45),
     )
 
     # Visualizations Container
